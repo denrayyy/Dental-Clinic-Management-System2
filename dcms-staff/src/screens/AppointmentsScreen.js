@@ -23,6 +23,7 @@ import {
   updateAppointment,
 } from '../services/appointmentService'
 import { getPatients } from '../services/patientService'
+import { getActiveDentists } from '../services/staffDirectoryService'
 import { useAuth } from '../hooks/useAuth'
 import { addAuditLog } from '../services/logService'
 
@@ -33,9 +34,11 @@ const AppointmentsScreen = () => {
   const { user } = useAuth()
   const [appointments, setAppointments] = useState([])
   const [patients, setPatients] = useState([])
+  const [dentists, setDentists] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
+  const [dentistsError, setDentistsError] = useState('')
 
   const [filterDate, setFilterDate] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -58,14 +61,30 @@ const AppointmentsScreen = () => {
 
   const loadData = useCallback(async () => {
     setError('')
+    setDentistsError('')
 
     try {
-      const [appointmentsData, patientsData] = await Promise.all([
+      const [appointmentsResult, patientsResult, dentistsResult] = await Promise.allSettled([
         getAppointments(),
         getPatients(),
+        getActiveDentists(),
       ])
+
+      const appointmentsData = appointmentsResult.status === 'fulfilled' ? appointmentsResult.value : []
+      const patientsData = patientsResult.status === 'fulfilled' ? patientsResult.value : []
+      const dentistsData = dentistsResult.status === 'fulfilled' ? dentistsResult.value : []
+
       setAppointments(appointmentsData)
       setPatients(patientsData)
+      setDentists(dentistsData)
+
+      if (appointmentsResult.status === 'rejected' || patientsResult.status === 'rejected') {
+        setError('Unable to load appointments. Pull to refresh and try again.')
+      }
+
+      if (dentistsResult.status === 'rejected') {
+        setDentistsError('Unable to load dentist list. Check access and refresh.')
+      }
     } catch {
       setError('Unable to load appointments. Pull to refresh and try again.')
     } finally {
@@ -99,7 +118,20 @@ const AppointmentsScreen = () => {
     setIsSubmitting(true)
 
     try {
+      if (!form.dentistId) {
+        Alert.alert('Missing dentist', 'Please assign a dentist before saving.')
+        return
+      }
+
       if (editingAppointment?.id) {
+        const editingStatus =
+          editingAppointment.status === 'cancel' ? 'cancelled' : editingAppointment.status
+
+        if (editingStatus === 'completed') {
+          Alert.alert('Editing locked', 'Completed appointments can no longer be edited.')
+          return
+        }
+
         await updateAppointment(editingAppointment.id, {
           ...form,
           status: editingAppointment.status || 'pending',
@@ -165,7 +197,8 @@ const AppointmentsScreen = () => {
         time: appointment.time,
         status,
         fee,
-        dentist: appointment.dentist || '',
+        dentistId: appointment.dentistId || '',
+        dentistName: appointment.dentistName || appointment.dentist || '',
         notes: appointment.notes || '',
       })
       await addAuditLog(
@@ -232,6 +265,7 @@ const AppointmentsScreen = () => {
   const renderItem = ({ item }) => {
     const normalizedStatus = item.status === 'cancel' ? 'cancelled' : item.status || 'pending'
     const isFinalStatus = normalizedStatus === 'completed' || normalizedStatus === 'cancelled'
+    const isCompleted = normalizedStatus === 'completed'
 
     return (
       <View style={styles.card}>
@@ -239,8 +273,13 @@ const AppointmentsScreen = () => {
           <Text style={styles.name}>{patientLookup.get(item.patientId) || 'Unknown patient'}</Text>
           <View style={styles.actions}>
             <Pressable
-              style={styles.iconButton}
+              style={[styles.iconButton, isCompleted && styles.iconButtonDisabled]}
+              disabled={isCompleted}
               onPress={() => {
+                if (isCompleted) {
+                  return
+                }
+
                 setEditingAppointment(item)
                 setIsFormVisible(true)
               }}
@@ -255,7 +294,7 @@ const AppointmentsScreen = () => {
 
         <Text style={styles.detail}>Date: {item.date} at {item.time}</Text>
         <Text style={styles.detail}>Status: {normalizedStatus}</Text>
-        <Text style={styles.detail}>Dentist: {item.dentist || 'Not assigned'}</Text>
+        <Text style={styles.detail}>Dentist: {item.dentistName || item.dentist || 'Not assigned'}</Text>
         <Text style={styles.detail}>Amount Paid: PHP {Number(item.fee) || 0}</Text>
         <Text style={styles.detail}>Notes: {item.notes || 'No notes'}</Text>
 
@@ -350,6 +389,8 @@ const AppointmentsScreen = () => {
         visible={isFormVisible}
         appointment={editingAppointment}
         patients={patients}
+        dentists={dentists}
+        dentistsError={dentistsError}
         isSubmitting={isSubmitting}
         onClose={() => {
           setIsFormVisible(false)
@@ -492,6 +533,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
     borderRadius: 999,
     padding: 8,
+  },
+  iconButtonDisabled: {
+    opacity: 0.45,
   },
   listContent: {
     padding: 14,

@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   getAuth,
+  sendPasswordResetEmail,
   signOut,
 } from 'firebase/auth'
 import { serverTimestamp } from 'firebase/firestore'
@@ -53,4 +54,15 @@ export const activateStaff = async (currentUser, staffId) => {
 export const deleteStaffProfile = async (currentUser, staffId) => {
   await deleteDocumentById('staff', staffId)
   await addAuditLog(currentUser?.uid ?? 'system', 'delete', 'staff', staffId)
+}
+
+export const resetAccountPassword = async (currentUser, email) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase()
+
+  if (!normalizedEmail) {
+    throw new Error('No email address found for this account.')
+  }
+
+  await sendPasswordResetEmail(getAuth(), normalizedEmail)
+  await addAuditLog(currentUser?.uid ?? 'system', 'reset-password', 'staff', normalizedEmail)
 }

@@ -38,7 +38,7 @@ const formatPeso = (value) =>
     maximumFractionDigits: 0,
   }).format(value)
 
-const buildDailySeries = (records, dateField, valueResolver = () => 1) => {
+const buildDailySeries = (records, dateFields, valueResolver = () => 1) => {
   const days = Array.from({ length: 7 }).map((_, index) => {
     const date = subDays(new Date(), 6 - index)
     return {
@@ -48,8 +48,12 @@ const buildDailySeries = (records, dateField, valueResolver = () => 1) => {
     }
   })
 
+  const normalizedDateFields = Array.isArray(dateFields) ? dateFields : [dateFields]
+
   records.forEach((item) => {
-    const date = toDate(item[dateField])
+    const date = normalizedDateFields
+      .map((field) => toDate(item[field]))
+      .find((value) => Boolean(value))
     if (!date) return
 
     const key = format(date, 'yyyy-MM-dd')
@@ -153,7 +157,7 @@ const DashboardPage = () => {
   }, [appointments, patients])
 
   const appointmentTrend = useMemo(
-    () => buildDailySeries(appointments, 'date'),
+    () => buildDailySeries(appointments, ['createdAt', 'date']),
     [appointments],
   )
 
@@ -163,7 +167,7 @@ const DashboardPage = () => {
   )
 
   const revenueTrend = useMemo(
-    () => buildDailySeries(appointments, 'date', (item) => Number(item.fee) || 0),
+    () => buildDailySeries(appointments, ['createdAt', 'date'], (item) => Number(item.fee) || 0),
     [appointments],
   )
 

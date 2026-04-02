@@ -7,7 +7,8 @@ const initialForm = {
   date: '',
   time: '',
   status: 'pending',
-  dentist: '',
+  dentistId: '',
+  dentistName: '',
   notes: '',
 }
 
@@ -15,11 +16,27 @@ const AppointmentFormModal = ({
   visible,
   appointment,
   patients,
+  dentists = [],
   isSubmitting,
   onSubmit,
   onClose,
 }) => {
   const [form, setForm] = useState(initialForm)
+  const [isDentistDropdownOpen, setIsDentistDropdownOpen] = useState(false)
+
+  const formatDentistName = (name) => {
+    const trimmedName = String(name || '').trim()
+    if (!trimmedName) {
+      return 'Dr. Dentist'
+    }
+
+    const normalized = trimmedName.toLowerCase()
+    if (normalized.startsWith('dr.') || normalized.startsWith('dr ')) {
+      return trimmedName
+    }
+
+    return `Dr. ${trimmedName}`
+  }
 
   useEffect(() => {
     if (!visible) {
@@ -32,20 +49,24 @@ const AppointmentFormModal = ({
         date: appointment.date || '',
         time: appointment.time || '',
         status: appointment.status || 'pending',
-        dentist: appointment.dentist || '',
+        dentistId: appointment.dentistId || '',
+        dentistName: appointment.dentistName || appointment.dentist || '',
         notes: appointment.notes || '',
       })
+      setIsDentistDropdownOpen(false)
       return
     }
 
     setForm(initialForm)
+    setIsDentistDropdownOpen(false)
   }, [appointment, visible])
 
   const isValid = useMemo(() => {
     return (
       form.patientId &&
       form.date.trim().length > 0 &&
-      form.time.trim().length > 0
+      form.time.trim().length > 0 &&
+      form.dentistId.trim().length > 0
     )
   }, [form])
 
@@ -60,6 +81,14 @@ const AppointmentFormModal = ({
 
     onSubmit(form)
   }
+
+  const selectDentist = (dentist) => {
+    updateField('dentistId', dentist.id)
+    updateField('dentistName', dentist.name || '')
+    setIsDentistDropdownOpen(false)
+  }
+
+  const selectedDentist = dentists.find((dentist) => dentist.id === form.dentistId)
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -98,12 +127,46 @@ const AppointmentFormModal = ({
             placeholder="09:30"
           />
 
-          <FormField
-            label="Dentist (Optional)"
-            value={form.dentist}
-            onChangeText={(text) => updateField('dentist', text)}
-            placeholder="Dr. Santos"
-          />
+          <Text style={styles.label}>Assign Dentist</Text>
+          <Pressable
+            style={styles.dropdownTrigger}
+            onPress={() => setIsDentistDropdownOpen((prev) => !prev)}
+            disabled={!dentists.length}
+          >
+            <Text style={selectedDentist ? styles.dropdownValue : styles.dropdownPlaceholder}>
+              {selectedDentist
+                ? formatDentistName(selectedDentist.name)
+                : dentists.length
+                  ? 'Select dentist'
+                  : 'No active dentists available'}
+            </Text>
+            <Text style={styles.dropdownChevron}>{isDentistDropdownOpen ? '▲' : '▼'}</Text>
+          </Pressable>
+
+          {isDentistDropdownOpen && dentists.length ? (
+            <View style={styles.dropdownMenu}>
+              {dentists.map((dentist) => {
+                const isSelected = form.dentistId === dentist.id
+
+                return (
+                  <Pressable
+                    key={dentist.id}
+                    style={[styles.dropdownOption, isSelected && styles.patientChipActive]}
+                    onPress={() => selectDentist(dentist)}
+                  >
+                    <Text style={[styles.dropdownOptionText, isSelected && styles.patientTextActive]}>
+                      {formatDentistName(dentist.name)}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          ) : null}
+
+          {!dentists.length ? (
+            <Text style={styles.helperText}>No active dentists found.</Text>
+          ) : null}
+
           <FormField
             label="Notes"
             value={form.notes}
@@ -160,6 +223,51 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.6,
   },
+  dropdownChevron: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  dropdownMenu: {
+    backgroundColor: '#fff',
+    borderColor: '#cbd5e1',
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 10,
+    overflow: 'hidden',
+  },
+  dropdownOption: {
+    borderBottomColor: '#e2e8f0',
+    borderBottomWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  dropdownOptionText: {
+    color: '#334155',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  dropdownPlaceholder: {
+    color: '#94a3b8',
+    fontSize: 14,
+  },
+  dropdownTrigger: {
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderColor: '#cbd5e1',
+    borderRadius: 10,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
+  dropdownValue: {
+    color: '#0f172a',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   footer: {
     borderTopColor: '#e2e8f0',
     borderTopWidth: 1,
@@ -172,6 +280,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     paddingHorizontal: 16,
+  },
+  helperText: {
+    color: '#64748b',
+    fontSize: 12,
+    marginBottom: 10,
+    marginTop: -4,
   },
   label: {
     color: '#334155',

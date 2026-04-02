@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { orderBy } from 'firebase/firestore'
 import { format } from 'date-fns'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -18,17 +17,39 @@ const ReportsPage = () => {
   const [reportType, setReportType] = useState('appointments')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedDate, setSelectedDate] = useState('')
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const unsubAppointments = subscribeToCollection(
       'appointments',
-      [orderBy('createdAt', 'desc')],
-      setAppointments,
+      [],
+      (data) => {
+        const sorted = data.sort((a, b) => {
+          const dateA = toDate(b.createdAt) || toDate(b.date)
+          const dateB = toDate(a.createdAt) || toDate(a.date)
+          if (!dateA || !dateB) return 0
+          return dateA - dateB
+        })
+        setAppointments(sorted)
+        setError(null)
+      },
+      setError,
     )
+
     const unsubPatients = subscribeToCollection(
       'patients',
-      [orderBy('createdAt', 'desc')],
-      setPatients,
+      [],
+      (data) => {
+        const sorted = data.sort((a, b) => {
+          const dateA = toDate(b.createdAt)
+          const dateB = toDate(a.createdAt)
+          if (!dateA || !dateB) return 0
+          return dateA - dateB
+        })
+        setPatients(sorted)
+        setError(null)
+      },
+      setError,
     )
 
     return () => {
@@ -164,6 +185,12 @@ const ReportsPage = () => {
           Export Current Report (PDF)
         </button>
       </article>
+
+      {error ? (
+        <p className="rounded-xl border border-red-300 bg-red-100 p-4 text-sm text-red-700">
+          <strong>Error:</strong> {error.message}
+        </p>
+      ) : null}
 
       {reportType === 'appointments' ? (
         <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

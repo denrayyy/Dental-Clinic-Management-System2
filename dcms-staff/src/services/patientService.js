@@ -32,6 +32,17 @@ export const getPatients = async () => {
     .sort((a, b) => a.fullName.localeCompare(b.fullName))
 }
 
+export const getPatientsByIds = async (patientIds) => {
+  const idSet = new Set((patientIds || []).filter(Boolean))
+
+  if (!idSet.size) {
+    return []
+  }
+
+  const patients = await getPatients()
+  return patients.filter((patient) => idSet.has(patient.id))
+}
+
 export const updatePatient = async (id, payload) => {
   const patientRef = doc(db, 'patients', id)
   await updateDoc(patientRef, {

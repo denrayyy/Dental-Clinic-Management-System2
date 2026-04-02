@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { orderBy } from 'firebase/firestore'
 import { useAuth } from '../hooks/useAuth'
 import { subscribeToCollection } from '../services/firestoreService'
 import {
@@ -7,6 +6,7 @@ import {
   createStaffWithAuthAndProfile,
   deactivateStaff,
   deleteStaffProfile,
+  resetAccountPassword,
   updateStaffProfile,
 } from '../services/staffService'
 import { useConfirmDialog } from '../hooks/useConfirmDialog'
@@ -14,9 +14,15 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog'
 const emptyForm = {
   name: '',
   email: '',
-  role: 'dentist',
-  status: 'active',
+  role: 'staff',
   password: '',
+}
+
+const toDate = (value) => {
+  if (!value) return null
+  if (value?.toDate) return value.toDate()
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
 }
 
 const StaffPage = () => {
@@ -27,21 +33,41 @@ const StaffPage = () => {
   const [editingId, setEditingId] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [loadError, setLoadError] = useState('')
+
+  const displayedStaff = useMemo(
+    () => staff.filter((member) => member.role !== 'admin' && member.role !== 'owner'),
+    [staff],
+  )
 
   useEffect(() => {
     const unsubscribe = subscribeToCollection(
       'staff',
-      [orderBy('createdAt', 'desc')],
-      setStaff,
+      [],
+      (records) => {
+        const sorted = [...records].sort((a, b) => {
+          const aDate = toDate(a.createdAt)
+          const bDate = toDate(b.createdAt)
+          if (!aDate && !bDate) return 0
+          if (!aDate) return 1
+          if (!bDate) return -1
+          return bDate.getTime() - aDate.getTime()
+        })
+        setStaff(sorted)
+      },
+      (error) =>
+        setLoadError(
+          `Unable to load records (${error?.code || 'unknown'}): ${error?.message || 'Please check Firestore rules and try again.'}`,
+        ),
     )
 
     return unsubscribe
   }, [])
 
-  const submitLabel = useMemo(
-    () => (editingId ? 'Update Staff' : 'Create Staff'),
-    [editingId],
-  )
+  const submitLabel = useMemo(() => {
+    if (editingId) return 'Update'
+    return 'Create'
+  }, [editingId])
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -55,12 +81,14 @@ const StaffPage = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+    const isEditing = Boolean(editingId)
+
     const confirmed = await confirm({
-      title: editingId ? 'Update Staff' : 'Create Staff Account',
-      message: editingId
-        ? 'Confirm updating this staff record?'
-        : 'Confirm creating this staff account?',
-      confirmText: editingId ? 'Update' : 'Create',
+      title: isEditing ? 'Update Record' : 'Create Account',
+      message: isEditing
+        ? 'Confirm updating this record?'
+        : 'Confirm creating this account?',
+      confirmText: isEditing ? 'Update' : 'Create',
       tone: 'primary',
     })
 
@@ -77,17 +105,16 @@ const StaffPage = () => {
           name: form.name,
           email: form.email,
           role: form.role,
-          status: form.status,
         })
-        setMessage('Staff updated successfully.')
+        setMessage('Record updated successfully.')
       } else {
-        await createStaffWithAuthAndProfile(user, form)
-        setMessage('Staff account created successfully.')
+        await createStaffWithAuthAndProfile(user, { ...form, status: 'active' })
+        setMessage('Account created successfully.')
       }
 
       resetForm()
     } catch (error) {
-      setMessage(error.message || 'Unable to save staff record.')
+      setMessage(error.message || 'Unable to save this record.')
     } finally {
       setIsSaving(false)
     }
@@ -95,8 +122,8 @@ const StaffPage = () => {
 
   const handleEdit = async (record) => {
     const confirmed = await confirm({
-      title: 'Edit Staff Record',
-      message: `Edit staff profile for ${record.name || 'this member'}?`,
+      title: 'Edit Record',
+      message: `Edit profile for ${record.name || 'this member'}?`,
       confirmText: 'Edit',
       tone: 'primary',
     })
@@ -109,16 +136,15 @@ const StaffPage = () => {
     setForm({
       name: record.name || '',
       email: record.email || '',
-      role: record.role || 'dentist',
-      status: record.status || 'active',
+      role: record.role || 'staff',
       password: '',
     })
   }
 
   const handleDeactivate = async (staffId) => {
     const confirmed = await confirm({
-      title: 'Deactivate Staff',
-      message: 'Deactivate this staff account?',
+      title: 'Deactivate Account',
+      message: 'Deactivate this account?',
       confirmText: 'Deactivate',
       tone: 'warning',
     })
@@ -132,8 +158,8 @@ const StaffPage = () => {
 
   const handleActivate = async (staffId) => {
     const confirmed = await confirm({
-      title: 'Activate Staff',
-      message: 'Activate this staff account?',
+      title: 'Activate Account',
+      message: 'Activate this account?',
       confirmText: 'Activate',
       tone: 'primary',
     })
@@ -147,8 +173,8 @@ const StaffPage = () => {
 
   const handleDelete = async (staffId) => {
     const confirmed = await confirm({
-      title: 'Delete Staff Record',
-      message: 'Delete this staff record? This cannot be undone.',
+      title: 'Delete Record',
+      message: 'Delete this record? This cannot be undone.',
       confirmText: 'Delete',
       tone: 'danger',
     })
@@ -160,13 +186,33 @@ const StaffPage = () => {
     await deleteStaffProfile(user, staffId)
   }
 
+  const handleResetPassword = async (record) => {
+    const confirmed = await confirm({
+      title: 'Reset Password',
+      message: `Send password reset email to ${record.email || 'this account'}?`,
+      confirmText: 'Send Reset Link',
+      tone: 'warning',
+    })
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      await resetAccountPassword(user, record.email)
+      setMessage(`Password reset email sent to ${record.email}.`)
+    } catch (error) {
+      setMessage(error.message || 'Unable to send password reset email.')
+    }
+  }
+
   return (
     <>
       <section className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">Staff Form</h3>
+          <h3 className="text-lg font-semibold text-slate-900">Account Form</h3>
           <p className="mt-1 text-sm text-slate-500">
-            Add staff members and create authentication credentials.
+            Add team members and create authentication credentials.
           </p>
 
           <form className="mt-5 space-y-3" onSubmit={handleSubmit}>
@@ -180,24 +226,23 @@ const StaffPage = () => {
             />
 
             <input
+              type="email"
               name="email"
               value={form.email}
               onChange={handleChange}
               required
-              type="email"
-              placeholder="Email"
+              placeholder="Email address"
               className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-cyan-300 focus:border-cyan-500 focus:ring"
             />
 
             {!editingId ? (
               <input
+                type="password"
                 name="password"
                 value={form.password}
                 onChange={handleChange}
                 required
-                type="password"
-                minLength={6}
-                placeholder="Temporary password"
+                placeholder="Password"
                 className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-cyan-300 focus:border-cyan-500 focus:ring"
               />
             ) : null}
@@ -208,22 +253,11 @@ const StaffPage = () => {
               onChange={handleChange}
               className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-cyan-300 focus:border-cyan-500 focus:ring"
             >
+              <option value="staff">Staff</option>
               <option value="dentist">Dentist</option>
-              <option value="receptionist">Receptionist</option>
-              <option value="assistant">Assistant</option>
             </select>
 
-            <select
-              name="status"
-              value={form.status}
-              onChange={handleChange}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-cyan-300 focus:border-cyan-500 focus:ring"
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3 pt-2">
               <button
                 type="submit"
                 disabled={isSaving}
@@ -251,8 +285,14 @@ const StaffPage = () => {
         </article>
 
         <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          {loadError ? (
+            <div className="border-b border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {loadError}
+            </div>
+          ) : null}
+
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+            <table className="min-w-full text-sm">
               <thead className="bg-slate-100 text-slate-700">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Name</th>
@@ -263,53 +303,65 @@ const StaffPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {staff.map((member) => (
-                  <tr key={member.id} className="border-t border-slate-100">
-                    <td className="px-4 py-3">{member.name}</td>
-                    <td className="px-4 py-3">{member.email}</td>
-                    <td className="px-4 py-3 capitalize">{member.role}</td>
+                {displayedStaff.map((record) => (
+                  <tr key={record.id} className="border-t border-slate-100">
+                    <td className="px-4 py-3">{record.name}</td>
+                    <td className="px-4 py-3">{record.email}</td>
+                    <td className="px-4 py-3 capitalize">{record.role}</td>
                     <td className="px-4 py-3">
                       <span
-                        className={[
-                          'rounded-full px-2.5 py-1 text-xs font-medium',
-                          member.status === 'active'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-slate-200 text-slate-600',
-                        ].join(' ')}
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          record.status === 'active'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-slate-200 text-slate-600'
+                        }`}
                       >
-                        {member.status}
+                        {record.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
+                    <td className="flex items-center gap-2 px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(record)}
+                        className="rounded-lg bg-cyan-500 px-3 py-1.5 font-semibold text-white hover:bg-cyan-600"
+                      >
+                        Edit
+                      </button>
+
+                      {record.status === 'active' ? (
                         <button
-                          onClick={() => handleEdit(member)}
-                          className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white"
+                          type="button"
+                          onClick={() => handleDeactivate(record.id)}
+                          className="rounded-lg bg-orange-500 px-3 py-1.5 font-semibold text-white hover:bg-orange-600"
                         >
-                          Edit
+                          Deactivate
                         </button>
-                        {member.status === 'active' ? (
-                          <button
-                            onClick={() => handleDeactivate(member.id)}
-                            className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white"
-                          >
-                            Deactivate
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleActivate(member.id)}
-                            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white"
-                          >
-                            Activate
-                          </button>
-                        )}
+                      ) : (
                         <button
-                          onClick={() => handleDelete(member.id)}
-                          className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white"
+                          type="button"
+                          onClick={() => handleActivate(record.id)}
+                          className="rounded-lg bg-green-500 px-3 py-1.5 font-semibold text-white hover:bg-green-600"
                         >
-                          Delete
+                          Activate
                         </button>
-                      </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleResetPassword(record)}
+                        className="rounded-lg bg-indigo-600 px-3 py-1.5 font-semibold text-white hover:bg-indigo-700 whitespace-nowrap"
+                        title="Reset Password"
+                      >
+                        Reset
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(record.id)}
+                        className="rounded-lg bg-red-600 px-3 py-1.5 font-semibold text-white hover:bg-red-700"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -317,7 +369,7 @@ const StaffPage = () => {
                 {!staff.length ? (
                   <tr>
                     <td className="px-4 py-5 text-sm text-slate-500" colSpan={5}>
-                      No staff records found.
+                      No records found.
                     </td>
                   </tr>
                 ) : null}

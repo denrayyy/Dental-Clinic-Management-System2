@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { orderBy } from 'firebase/firestore'
 import { format } from 'date-fns'
 import { subscribeToCollection } from '../services/firestoreService'
 
@@ -12,25 +11,44 @@ const toDate = (value) => {
 
 const LogsPage = () => {
   const [logs, setLogs] = useState([])
+  const [loadError, setLoadError] = useState('')
   const [userFilter, setUserFilter] = useState('')
   const [actionFilter, setActionFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
 
   useEffect(() => {
-    const unsubscribe = subscribeToCollection('logs', [orderBy('timestamp', 'desc')], setLogs)
+    const unsubscribe = subscribeToCollection(
+      'logs',
+      [],
+      setLogs,
+      (error) =>
+        setLoadError(
+          `Unable to load logs (${error?.code || 'unknown'}): ${error?.message || 'Please check Firestore rules and try again.'}`,
+        ),
+    )
     return unsubscribe
   }, [])
 
   const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      const timestamp = toDate(log.timestamp)
+    const sortedLogs = [...logs].sort((a, b) => {
+      const aDate = toDate(a.timestamp) || toDate(a.createdAt)
+      const bDate = toDate(b.timestamp) || toDate(b.createdAt)
+      if (!aDate && !bDate) return 0
+      if (!aDate) return 1
+      if (!bDate) return -1
+      return bDate.getTime() - aDate.getTime()
+    })
+
+    return sortedLogs.filter((log) => {
+      const timestamp = toDate(log.timestamp) || toDate(log.createdAt)
       const matchesUser = userFilter
         ? String(log.userId || '')
             .toLowerCase()
             .includes(userFilter.toLowerCase())
         : true
 
-      const matchesAction = actionFilter === 'all' ? true : log.action === actionFilter
+      const normalizedAction = String(log.action || '').toLowerCase()
+      const matchesAction = actionFilter === 'all' ? true : normalizedAction === actionFilter
       const matchesDate = dateFilter
         ? timestamp
           ? format(timestamp, 'yyyy-MM-dd') === dateFilter
@@ -75,6 +93,12 @@ const LogsPage = () => {
       </article>
 
       <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {loadError ? (
+          <div className="border-b border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {loadError}
+          </div>
+        ) : null}
+
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-100 text-slate-700">
