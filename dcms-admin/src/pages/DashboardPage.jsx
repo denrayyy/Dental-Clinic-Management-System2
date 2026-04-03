@@ -38,6 +38,20 @@ const formatPeso = (value) =>
     maximumFractionDigits: 0,
   }).format(value)
 
+const getAppointmentTotalFee = (appointment) => {
+  const totalPrice = Number(appointment?.totalPrice)
+  if (Number.isFinite(totalPrice) && totalPrice >= 0) {
+    return totalPrice
+  }
+
+  if (Array.isArray(appointment?.services) && appointment.services.length) {
+    return appointment.services.reduce((sum, service) => sum + (Number(service?.price) || 0), 0)
+  }
+
+  const fallback = Number(appointment?.fee ?? appointment?.price)
+  return Number.isFinite(fallback) ? fallback : 0
+}
+
 const buildDailySeries = (records, dateFields, valueResolver = () => 1) => {
   const days = Array.from({ length: 7 }).map((_, index) => {
     const date = subDays(new Date(), 6 - index)
@@ -140,10 +154,13 @@ const DashboardPage = () => {
       (appointment) => appointment.status === 'pending',
     ).length
 
-    const revenue = appointments.reduce(
-      (total, appointment) => total + (Number(appointment.fee) || 0),
-      0,
-    )
+    const revenue = appointments.reduce((total, appointment) => {
+      if (appointment.status !== 'completed') {
+        return total
+      }
+
+      return total + getAppointmentTotalFee(appointment)
+    }, 0)
 
     return {
       totalPatients: patients.length,
@@ -167,7 +184,14 @@ const DashboardPage = () => {
   )
 
   const revenueTrend = useMemo(
-    () => buildDailySeries(appointments, ['createdAt', 'date'], (item) => Number(item.fee) || 0),
+    () =>
+      buildDailySeries(appointments, ['createdAt', 'date'], (item) => {
+        if (item.status !== 'completed') {
+          return 0
+        }
+
+        return getAppointmentTotalFee(item)
+      }),
     [appointments],
   )
 

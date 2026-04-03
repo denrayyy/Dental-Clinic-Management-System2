@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: '#0f766e',
     borderRadius: 10,
-    marginBottom: 6,
+    marginBottom: 18,
     marginTop: 2,
     paddingVertical: 12,
   },
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'flex-start',
     padding: 14,
-    paddingTop: 80,
+    paddingTop: 120,
   },
   error: {
     backgroundColor: '#fee2e2',

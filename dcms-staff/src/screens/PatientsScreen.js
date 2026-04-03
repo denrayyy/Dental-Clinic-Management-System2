@@ -24,6 +24,20 @@ import {
 import { useAuth } from '../hooks/useAuth'
 import { addAuditLog } from '../services/logService'
 
+const formatUtcDateTime = (value) => {
+  if (!value) {
+    return 'Not recorded'
+  }
+
+  const date = typeof value?.toDate === 'function' ? value.toDate() : new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return 'Not recorded'
+  }
+
+  const iso = date.toISOString()
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`
+}
+
 const PatientsScreen = () => {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
@@ -87,7 +101,10 @@ const PatientsScreen = () => {
           `${editingPatient.id} - ${form.fullName}`,
         )
       } else {
-        const createdId = await addPatient(form)
+        const createdId = await addPatient({
+          ...form,
+          createdBy: user?.uid || 'staff',
+        })
         await addAuditLog(
           user?.uid || 'staff',
           'create',
@@ -147,6 +164,7 @@ const PatientsScreen = () => {
         <Text style={styles.detail}>Gender: {item.gender}</Text>
         <Text style={styles.detail}>Contact: {item.contact}</Text>
         <Text style={styles.detail}>Address: {item.address}</Text>
+        <Text style={styles.detail}>Created: {formatUtcDateTime(item.createdAt)}</Text>
       </View>
     )
   }

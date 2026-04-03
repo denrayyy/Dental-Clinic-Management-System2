@@ -18,6 +18,7 @@ export const addPatient = async (payload) => {
     gender: payload.gender.trim(),
     contact: payload.contact.trim(),
     address: payload.address.trim(),
+    createdBy: payload.createdBy || 'staff',
     createdAt: serverTimestamp(),
   }
 

@@ -4,6 +4,7 @@ import clinicLogo from '../../assets/logo.png'
 const links = [
   { label: 'Dashboard', path: '/dashboard' },
   { label: 'Staff', path: '/staff' },
+  { label: 'Services', path: '/services' },
   { label: 'Reports', path: '/reports' },
   { label: 'Logs', path: '/logs' },
 ]

@@ -5,6 +5,7 @@ import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/LoginPage'
 import LogsPage from './pages/LogsPage'
 import ReportsPage from './pages/ReportsPage'
+import ServicesPage from './pages/ServicesPage'
 import StaffPage from './pages/StaffPage'
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/staff" element={<StaffPage />} />
+        <Route path="/services" element={<ServicesPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/logs" element={<LogsPage />} />
       </Route>

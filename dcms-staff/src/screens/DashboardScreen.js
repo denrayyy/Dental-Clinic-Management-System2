@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
-import { RefreshControl, ScrollView, StyleSheet, Text, View, Pressable, Image, Alert } from 'react-native'
+import { RefreshControl, ScrollView, StyleSheet, Text, View, Image } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
-import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getPatients } from '../services/patientService'
 import { getAppointments } from '../services/appointmentService'
@@ -11,7 +10,7 @@ import { useAuth } from '../hooks/useAuth'
 
 const DashboardScreen = () => {
   const insets = useSafeAreaInsets()
-  const { profile, logout } = useAuth()
+  const { profile } = useAuth()
   const [stats, setStats] = useState({
     patients: 0,
     todayAppointments: 0,
@@ -58,13 +57,6 @@ const DashboardScreen = () => {
     loadDashboard()
   }
 
-  const handleLogoutPress = () => {
-    Alert.alert('Confirm logout', 'Are you sure you want to log out?', [
-      { text: 'No', style: 'cancel' },
-      { text: 'Yes, logout', style: 'destructive', onPress: logout },
-    ])
-  }
-
   if (isLoading) {
     return <LoadingOverlay label="Loading dashboard..." />
   }
@@ -82,10 +74,6 @@ const DashboardScreen = () => {
           <Text style={styles.title}>Clinic Dashboard</Text>
           <Text style={styles.subtitle}>Hello, {profile?.name || 'Staff'}.</Text>
         </View>
-        <Pressable style={styles.logoutButton} onPress={handleLogoutPress}>
-          <Ionicons name="log-out-outline" size={18} color="#b91c1c" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </Pressable>
       </View>
 
       <View style={styles.statsGrid}>
@@ -134,20 +122,6 @@ const styles = StyleSheet.create({
     height: 74,
     marginBottom: 14,
     width: 74,
-  },
-  logoutButton: {
-    alignItems: 'center',
-    backgroundColor: '#fee2e2',
-    borderRadius: 999,
-    flexDirection: 'row',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  logoutText: {
-    color: '#b91c1c',
-    fontSize: 12,
-    fontWeight: '700',
   },
   screen: {
     backgroundColor: '#f8fafc',

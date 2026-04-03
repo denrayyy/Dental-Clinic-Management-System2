@@ -11,13 +11,14 @@ const toDate = (value) => {
 
 const LogsPage = () => {
   const [logs, setLogs] = useState([])
+  const [staffMembers, setStaffMembers] = useState([])
   const [loadError, setLoadError] = useState('')
   const [userFilter, setUserFilter] = useState('')
   const [actionFilter, setActionFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
 
   useEffect(() => {
-    const unsubscribe = subscribeToCollection(
+    const unsubscribeLogs = subscribeToCollection(
       'logs',
       [],
       setLogs,
@@ -26,8 +27,58 @@ const LogsPage = () => {
           `Unable to load logs (${error?.code || 'unknown'}): ${error?.message || 'Please check Firestore rules and try again.'}`,
         ),
     )
-    return unsubscribe
+
+    const unsubscribeStaff = subscribeToCollection(
+      'staff',
+      [],
+      setStaffMembers,
+      (error) =>
+        setLoadError(
+          `Unable to load logs (${error?.code || 'unknown'}): ${error?.message || 'Please check Firestore rules and try again.'}`,
+        ),
+    )
+
+    return () => {
+      unsubscribeLogs()
+      unsubscribeStaff()
+    }
   }, [])
+
+  const staffNameById = useMemo(() => {
+    const map = new Map()
+    staffMembers.forEach((staff) => {
+      const id = String(staff.id || '').trim()
+      const name = String(staff.name || '').trim()
+      if (id && name) {
+        map.set(id, name)
+      }
+    })
+    return map
+  }, [staffMembers])
+
+  const resolveActorName = (log) => {
+    const userId = String(log.userId || '').trim()
+
+    if (!userId) {
+      return '-'
+    }
+
+    if (userId === 'system') {
+      return 'System'
+    }
+
+    const mappedName = staffNameById.get(userId)
+    if (mappedName) {
+      return mappedName
+    }
+
+    const details = String(log.details || '').trim()
+    if (details.includes('@')) {
+      return details
+    }
+
+    return userId
+  }
 
   const filteredLogs = useMemo(() => {
     const sortedLogs = [...logs].sort((a, b) => {
@@ -41,8 +92,9 @@ const LogsPage = () => {
 
     return sortedLogs.filter((log) => {
       const timestamp = toDate(log.timestamp) || toDate(log.createdAt)
+      const actorName = resolveActorName(log)
       const matchesUser = userFilter
-        ? String(log.userId || '')
+        ? String(actorName)
             .toLowerCase()
             .includes(userFilter.toLowerCase())
         : true
@@ -57,7 +109,7 @@ const LogsPage = () => {
 
       return matchesUser && matchesAction && matchesDate
     })
-  }, [logs, userFilter, actionFilter, dateFilter])
+  }, [logs, userFilter, actionFilter, dateFilter, staffMembers])
 
   return (
     <section className="space-y-5">
@@ -66,7 +118,7 @@ const LogsPage = () => {
           <input
             value={userFilter}
             onChange={(event) => setUserFilter(event.target.value)}
-            placeholder="Filter by user ID"
+            placeholder="Filter by user name"
             className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
           />
 
@@ -104,7 +156,7 @@ const LogsPage = () => {
             <thead className="bg-slate-100 text-slate-700">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold">Timestamp</th>
-                <th className="px-4 py-3 text-left font-semibold">User ID</th>
+                <th className="px-4 py-3 text-left font-semibold">User Name</th>
                 <th className="px-4 py-3 text-left font-semibold">Action</th>
                 <th className="px-4 py-3 text-left font-semibold">Module</th>
                 <th className="px-4 py-3 text-left font-semibold">Details</th>
@@ -118,7 +170,7 @@ const LogsPage = () => {
                     <td className="px-4 py-3">
                       {timestamp ? format(timestamp, 'PP p') : 'Pending timestamp'}
                     </td>
-                    <td className="px-4 py-3">{row.userId || '-'}</td>
+                    <td className="px-4 py-3">{resolveActorName(row)}</td>
                     <td className="px-4 py-3 uppercase">{row.action || '-'}</td>
                     <td className="px-4 py-3">{row.module || '-'}</td>
                     <td className="px-4 py-3">{row.details || '-'}</td>

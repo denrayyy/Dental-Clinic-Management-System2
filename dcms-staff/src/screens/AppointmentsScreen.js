@@ -17,11 +17,12 @@ import FormField from '../components/FormField'
 import LoadingOverlay from '../components/LoadingOverlay'
 import AppointmentFormModal from '../components/forms/AppointmentFormModal'
 import {
-  addAppointment,
+  createAppointment,
   deleteAppointment,
   getAppointments,
   updateAppointment,
 } from '../services/appointmentService'
+import { fetchServices } from '../services/serviceService'
 import { getPatients } from '../services/patientService'
 import { getActiveDentists } from '../services/staffDirectoryService'
 import { useAuth } from '../hooks/useAuth'
@@ -29,16 +30,45 @@ import { addAuditLog } from '../services/logService'
 
 const statusOptions = ['all', 'pending', 'completed', 'cancelled']
 
+const getAppointmentServiceList = (appointment) => {
+  if (Array.isArray(appointment?.services) && appointment.services.length) {
+    return appointment.services
+      .map((service) => `${service.name} (${new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        maximumFractionDigits: 0,
+      }).format(Number(service.price) || 0)})`)
+      .join(', ')
+  }
+
+  if (appointment?.serviceName) {
+    return appointment.serviceName
+  }
+
+  return 'Not selected'
+}
+
+const formatDateInput = (value) => {
+  const digits = String(value || '').replace(/[^0-9]/g, '').slice(0, 8)
+  if (digits.length <= 4) {
+    return digits
+  }
+  if (digits.length <= 6) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`
+  }
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`
+}
+
 const AppointmentsScreen = () => {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
   const [appointments, setAppointments] = useState([])
   const [patients, setPatients] = useState([])
   const [dentists, setDentists] = useState([])
+  const [services, setServices] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
-  const [dentistsError, setDentistsError] = useState('')
 
   const [filterDate, setFilterDate] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -51,6 +81,14 @@ const AppointmentsScreen = () => {
   const [completingAppointment, setCompletingAppointment] = useState(null)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
 
+  const formatPeso = (value) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      maximumFractionDigits: 0,
+    }).format(Number(value) || 0)
+  }
+
   const patientLookup = useMemo(() => {
     const map = new Map()
     patients.forEach((patient) => {
@@ -61,29 +99,32 @@ const AppointmentsScreen = () => {
 
   const loadData = useCallback(async () => {
     setError('')
-    setDentistsError('')
 
     try {
-      const [appointmentsResult, patientsResult, dentistsResult] = await Promise.allSettled([
+      const [appointmentsResult, patientsResult, dentistsResult, servicesResult] = await Promise.allSettled([
         getAppointments(),
         getPatients(),
         getActiveDentists(),
+        fetchServices(),
       ])
 
       const appointmentsData = appointmentsResult.status === 'fulfilled' ? appointmentsResult.value : []
       const patientsData = patientsResult.status === 'fulfilled' ? patientsResult.value : []
       const dentistsData = dentistsResult.status === 'fulfilled' ? dentistsResult.value : []
+      const servicesData = servicesResult.status === 'fulfilled' ? servicesResult.value : []
 
       setAppointments(appointmentsData)
       setPatients(patientsData)
       setDentists(dentistsData)
+      setServices(servicesData)
 
-      if (appointmentsResult.status === 'rejected' || patientsResult.status === 'rejected') {
+      if (
+        appointmentsResult.status === 'rejected' ||
+        patientsResult.status === 'rejected' ||
+        dentistsResult.status === 'rejected' ||
+        servicesResult.status === 'rejected'
+      ) {
         setError('Unable to load appointments. Pull to refresh and try again.')
-      }
-
-      if (dentistsResult.status === 'rejected') {
-        setDentistsError('Unable to load dentist list. Check access and refresh.')
       }
     } catch {
       setError('Unable to load appointments. Pull to refresh and try again.')
@@ -123,6 +164,11 @@ const AppointmentsScreen = () => {
         return
       }
 
+      if (!Array.isArray(form.services) || !form.services.length) {
+        Alert.alert('Missing service', 'Please select at least one service before saving.')
+        return
+      }
+
       if (editingAppointment?.id) {
         const editingStatus =
           editingAppointment.status === 'cancel' ? 'cancelled' : editingAppointment.status
@@ -135,7 +181,7 @@ const AppointmentsScreen = () => {
         await updateAppointment(editingAppointment.id, {
           ...form,
           status: editingAppointment.status || 'pending',
-          fee: Number(editingAppointment.fee) || 0,
+          totalPrice: Number(form.totalPrice) || 0,
         })
         await addAuditLog(
           user?.uid || 'staff',
@@ -144,12 +190,12 @@ const AppointmentsScreen = () => {
           `${editingAppointment.id} - ${form.date} ${form.time}`,
         )
       } else {
-        const createdId = await addAppointment(form)
+        const createdId = await createAppointment(form)
         await addAuditLog(
           user?.uid || 'staff',
           'create',
           'appointments',
-          `${createdId} - ${form.date} ${form.time}`,
+          `${createdId} - ${form.date} ${form.time} - total: ${Number(form.totalPrice) || 0}`,
         )
       }
 
@@ -188,7 +234,11 @@ const AppointmentsScreen = () => {
     )
   }
 
-  const updateAppointmentStatus = async (appointment, status, fee = appointment.fee || 0) => {
+  const updateAppointmentStatus = async (
+    appointment,
+    status,
+    totalPrice = Number(appointment.totalPrice ?? appointment.price ?? appointment.fee) || 0,
+  ) => {
     setIsUpdatingStatus(true)
     try {
       await updateAppointment(appointment.id, {
@@ -196,16 +246,16 @@ const AppointmentsScreen = () => {
         date: appointment.date,
         time: appointment.time,
         status,
-        fee,
+        totalPrice,
         dentistId: appointment.dentistId || '',
         dentistName: appointment.dentistName || appointment.dentist || '',
-        notes: appointment.notes || '',
+        services: appointment.services || [],
       })
       await addAuditLog(
         user?.uid || 'staff',
         'update',
         'appointments',
-        `${appointment.id} - status: ${status} - fee: ${Number(fee) || 0}`,
+        `${appointment.id} - status: ${status} - total: ${Number(totalPrice) || 0}`,
       )
       await loadData()
       return true
@@ -226,7 +276,12 @@ const AppointmentsScreen = () => {
         {
           text: 'Yes, cancel',
           style: 'destructive',
-          onPress: () => updateAppointmentStatus(appointment, 'cancelled', appointment.fee || 0),
+          onPress: () =>
+            updateAppointmentStatus(
+              appointment,
+              'cancelled',
+              Number(appointment.totalPrice ?? appointment.price ?? appointment.fee) || 0,
+            ),
         },
       ],
     )
@@ -234,7 +289,7 @@ const AppointmentsScreen = () => {
 
   const openCompleteModal = (appointment) => {
     setCompletingAppointment(appointment)
-    setAmountInput(String(Number(appointment.fee) || ''))
+    setAmountInput(String(Number(appointment.totalPrice ?? appointment.price ?? appointment.fee) || ''))
     setIsAmountModalVisible(true)
   }
 
@@ -295,8 +350,8 @@ const AppointmentsScreen = () => {
         <Text style={styles.detail}>Date: {item.date} at {item.time}</Text>
         <Text style={styles.detail}>Status: {normalizedStatus}</Text>
         <Text style={styles.detail}>Dentist: {item.dentistName || item.dentist || 'Not assigned'}</Text>
-        <Text style={styles.detail}>Amount Paid: PHP {Number(item.fee) || 0}</Text>
-        <Text style={styles.detail}>Notes: {item.notes || 'No notes'}</Text>
+        <Text style={styles.detail}>Services: {getAppointmentServiceList(item)}</Text>
+        <Text style={styles.detail}>Total: {formatPeso(item.totalPrice ?? item.price ?? item.fee)}</Text>
 
         {isFinalStatus ? (
           <View style={[styles.finalStatusBadge, normalizedStatus === 'completed' ? styles.finalCompleted : styles.finalCancelled]}>
@@ -341,8 +396,10 @@ const AppointmentsScreen = () => {
         <FormField
           label="Filter by date (YYYY-MM-DD)"
           value={filterDate}
-          onChangeText={setFilterDate}
+          onChangeText={(text) => setFilterDate(formatDateInput(text))}
           placeholder="2026-03-21"
+          keyboardType="number-pad"
+          maxLength={10}
         />
 
         <Text style={styles.statusLabel}>Status Filter</Text>
@@ -390,7 +447,7 @@ const AppointmentsScreen = () => {
         appointment={editingAppointment}
         patients={patients}
         dentists={dentists}
-        dentistsError={dentistsError}
+        services={services}
         isSubmitting={isSubmitting}
         onClose={() => {
           setIsFormVisible(false)
@@ -408,7 +465,7 @@ const AppointmentsScreen = () => {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Complete Appointment</Text>
-            <Text style={styles.modalSubtitle}>Enter total amount paid</Text>
+            <Text style={styles.modalSubtitle}>Confirm the final service amount paid</Text>
             <TextInput
               value={amountInput}
               onChangeText={setAmountInput}

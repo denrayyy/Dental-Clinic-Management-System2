@@ -1,4 +1,4 @@
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useEffect, useMemo, useState } from 'react'
 import FormField from '../FormField'
 
@@ -11,6 +11,11 @@ const initialForm = {
 }
 
 const genderOptions = ['Male', 'Female', 'Other']
+const namePattern = /^[A-Za-z][A-Za-z .'-]*$/
+const contactPattern = /^09\d{9}$/
+
+const sanitizeName = (value) => String(value || '').replace(/[^A-Za-z .'-]/g, '')
+const sanitizeDigits = (value) => String(value || '').replace(/[^0-9]/g, '')
 
 const PatientFormModal = ({ visible, patient, isSubmitting, onSubmit, onClose }) => {
   const [form, setForm] = useState(initialForm)
@@ -35,11 +40,15 @@ const PatientFormModal = ({ visible, patient, isSubmitting, onSubmit, onClose })
   }, [patient, visible])
 
   const isValid = useMemo(() => {
+    const ageNumber = Number(form.age)
+
     return (
-      form.fullName.trim().length > 1 &&
-      Number(form.age) > 0 &&
+      namePattern.test(form.fullName.trim()) &&
+      Number.isInteger(ageNumber) &&
+      ageNumber >= 1 &&
+      ageNumber <= 120 &&
       form.gender.trim().length > 0 &&
-      form.contact.trim().length > 4 &&
+      contactPattern.test(form.contact.trim()) &&
       form.address.trim().length > 4
     )
   }, [form])
@@ -50,6 +59,17 @@ const PatientFormModal = ({ visible, patient, isSubmitting, onSubmit, onClose })
 
   const handleSubmit = () => {
     if (!isValid || isSubmitting) {
+      if (!namePattern.test(form.fullName.trim())) {
+        Alert.alert('Invalid full name', 'Please enter letters only for the patient name.')
+      } else if (!Number.isInteger(Number(form.age)) || Number(form.age) < 1 || Number(form.age) > 120) {
+        Alert.alert('Invalid age', 'Please enter an age between 1 and 120.')
+      } else if (!form.gender.trim()) {
+        Alert.alert('Missing gender', 'Please select a gender.')
+      } else if (!contactPattern.test(form.contact.trim())) {
+        Alert.alert('Invalid contact', 'Please enter an 11-digit mobile number starting with 09.')
+      } else if (form.address.trim().length <= 4) {
+        Alert.alert('Invalid address', 'Please enter a complete address.')
+      }
       return
     }
 
@@ -65,15 +85,18 @@ const PatientFormModal = ({ visible, patient, isSubmitting, onSubmit, onClose })
           <FormField
             label="Full Name"
             value={form.fullName}
-            onChangeText={(text) => updateField('fullName', text)}
+            onChangeText={(text) => updateField('fullName', sanitizeName(text))}
             placeholder="Juan Dela Cruz"
+            autoCapitalize="words"
+            maxLength={80}
           />
           <FormField
             label="Age"
             value={form.age}
-            onChangeText={(text) => updateField('age', text.replace(/[^0-9]/g, ''))}
+            onChangeText={(text) => updateField('age', sanitizeDigits(text).slice(0, 3))}
             placeholder="30"
             keyboardType="number-pad"
+            maxLength={3}
           />
 
           <Text style={styles.label}>Gender</Text>
@@ -95,9 +118,10 @@ const PatientFormModal = ({ visible, patient, isSubmitting, onSubmit, onClose })
           <FormField
             label="Contact"
             value={form.contact}
-            onChangeText={(text) => updateField('contact', text)}
+            onChangeText={(text) => updateField('contact', sanitizeDigits(text).slice(0, 11))}
             placeholder="09xxxxxxxxx"
             keyboardType="phone-pad"
+            maxLength={11}
           />
           <FormField
             label="Address"
@@ -105,6 +129,7 @@ const PatientFormModal = ({ visible, patient, isSubmitting, onSubmit, onClose })
             onChangeText={(text) => updateField('address', text)}
             placeholder="City, Province"
             multiline
+            maxLength={160}
           />
         </ScrollView>
 

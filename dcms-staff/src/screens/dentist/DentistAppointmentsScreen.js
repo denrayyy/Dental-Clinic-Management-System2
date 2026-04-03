@@ -7,6 +7,17 @@ import { useAuth } from '../../hooks/useAuth'
 import { getAppointmentsByDentist } from '../../services/appointmentService'
 import { getPatients } from '../../services/patientService'
 
+const getAppointmentServiceList = (appointment) => {
+  if (Array.isArray(appointment?.services) && appointment.services.length) {
+    return appointment.services
+      .map((service) => service.name)
+      .filter(Boolean)
+      .join(', ')
+  }
+
+  return appointment?.serviceName || 'Not selected'
+}
+
 const DentistAppointmentsScreen = () => {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
@@ -15,6 +26,14 @@ const DentistAppointmentsScreen = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
+
+  const formatPeso = (value) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      maximumFractionDigits: 0,
+    }).format(Number(value) || 0)
+  }
 
   const patientLookup = useMemo(() => {
     const map = new Map()
@@ -73,8 +92,8 @@ const DentistAppointmentsScreen = () => {
             <Text style={styles.name}>{patientLookup.get(item.patientId) || 'Unknown patient'}</Text>
             <Text style={styles.detail}>Date: {item.date} at {item.time}</Text>
             <Text style={styles.detail}>Status: {item.status || 'pending'}</Text>
-            <Text style={styles.detail}>Amount Paid: PHP {Number(item.fee) || 0}</Text>
-            <Text style={styles.detail}>Notes: {item.notes || 'No notes'}</Text>
+            <Text style={styles.detail}>Services: {getAppointmentServiceList(item)}</Text>
+            <Text style={styles.detail}>Total: {formatPeso(item.totalPrice ?? item.price ?? item.fee)}</Text>
           </View>
         )}
       />

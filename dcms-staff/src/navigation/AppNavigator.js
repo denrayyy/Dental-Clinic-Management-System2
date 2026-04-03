@@ -8,6 +8,7 @@ import LoginScreen from '../screens/LoginScreen'
 import DashboardScreen from '../screens/DashboardScreen'
 import PatientsScreen from '../screens/PatientsScreen'
 import AppointmentsScreen from '../screens/AppointmentsScreen'
+import ProfileScreen from '../screens/ProfileScreen'
 import DentistDashboardScreen from '../screens/dentist/DentistDashboardScreen'
 import DentistAppointmentsScreen from '../screens/dentist/DentistAppointmentsScreen'
 import DentistPatientsScreen from '../screens/dentist/DentistPatientsScreen'
@@ -41,6 +42,8 @@ const StaffTabs = () => {
 						iconName = 'people-outline'
 					} else if (route.name === 'Appointments') {
 						iconName = 'calendar-outline'
+					} else if (route.name === 'Profile') {
+						iconName = 'person-circle-outline'
 					}
 
 					return <Ionicons name={iconName} size={size} color={color} />
@@ -50,6 +53,7 @@ const StaffTabs = () => {
 			<Tab.Screen name="Dashboard" component={DashboardScreen} />
 			<Tab.Screen name="Patients" component={PatientsScreen} />
 			<Tab.Screen name="Appointments" component={AppointmentsScreen} />
+			<Tab.Screen name="Profile" component={ProfileScreen} />
 		</Tab.Navigator>
 	)
 }

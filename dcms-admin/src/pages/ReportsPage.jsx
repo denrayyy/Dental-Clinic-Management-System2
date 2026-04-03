@@ -11,6 +11,43 @@ const toDate = (value) => {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
+const formatPeso = (value) => {
+  return new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0)
+}
+
+const getAppointmentServices = (appointment) => {
+  if (Array.isArray(appointment?.services) && appointment.services.length) {
+    return appointment.services
+      .map((service) => String(service?.name || '').trim())
+      .filter(Boolean)
+      .join(', ')
+  }
+
+  if (appointment?.serviceName) {
+    return String(appointment.serviceName)
+  }
+
+  return '-'
+}
+
+const getAppointmentTotalFee = (appointment) => {
+  const totalPrice = Number(appointment?.totalPrice)
+  if (Number.isFinite(totalPrice) && totalPrice >= 0) {
+    return totalPrice
+  }
+
+  if (Array.isArray(appointment?.services) && appointment.services.length) {
+    return appointment.services.reduce((sum, service) => sum + (Number(service?.price) || 0), 0)
+  }
+
+  const fallback = Number(appointment?.fee ?? appointment?.price)
+  return Number.isFinite(fallback) ? fallback : 0
+}
+
 const ReportsPage = () => {
   const [appointments, setAppointments] = useState([])
   const [patients, setPatients] = useState([])
@@ -82,17 +119,30 @@ const ReportsPage = () => {
     return patients.filter((item) => withinRange(toDate(item.createdAt)))
   }, [patients, selectedDate])
 
+  const patientNameById = useMemo(() => {
+    const map = new Map()
+    patients.forEach((patient) => {
+      map.set(patient.id, patient.fullName || patient.name || '-')
+    })
+    return map
+  }, [patients])
+
+  const getPatientName = (patientId) => {
+    return patientNameById.get(patientId) || '-'
+  }
+
   const financialRows = useMemo(() => {
     return filteredAppointments.map((item) => ({
       id: item.id,
       date: toDate(item.date) || toDate(item.createdAt),
-      patient: item.patientId || '-',
+      patientName: getPatientName(item.patientId),
       status: item.status || '-',
-      fee: Number(item.fee) || 0,
+      services: getAppointmentServices(item),
+      totalFee: getAppointmentTotalFee(item),
     }))
-  }, [filteredAppointments])
+  }, [filteredAppointments, patients])
 
-  const totalRevenue = financialRows.reduce((sum, row) => sum + row.fee, 0)
+  const totalRevenue = financialRows.reduce((sum, row) => sum + row.totalFee, 0)
 
   const exportCurrentReport = () => {
     const doc = new jsPDF()
@@ -103,13 +153,14 @@ const ReportsPage = () => {
 
     if (reportType === 'appointments') {
       autoTable(doc, {
-        head: [['Date', 'Patient ID', 'Dentist', 'Status', 'Fee']],
+        head: [['Date', 'Patient Name', 'Dentist', 'Services', 'Status', 'Total Fee']],
         body: filteredAppointments.map((row) => [
           toDate(row.date) ? format(toDate(row.date), 'PP') : '-',
-          row.patientId || '-',
-          row.dentist || '-',
+          getPatientName(row.patientId),
+          row.dentistName || row.dentist || '-',
+          getAppointmentServices(row),
           row.status || '-',
-          String(Number(row.fee) || 0),
+          formatPeso(getAppointmentTotalFee(row)),
         ]),
         startY: 24,
       })
@@ -131,12 +182,13 @@ const ReportsPage = () => {
 
     if (reportType === 'financial') {
       autoTable(doc, {
-        head: [['Date', 'Patient ID', 'Status', 'Fee']],
+        head: [['Date', 'Patient Name', 'Services', 'Status', 'Total Fee']],
         body: financialRows.map((row) => [
           row.date ? format(row.date, 'PP') : '-',
-          row.patient,
+          row.patientName,
+          row.services,
           row.status,
-          row.fee,
+          formatPeso(row.totalFee),
         ]),
         startY: 24,
       })
@@ -199,10 +251,11 @@ const ReportsPage = () => {
               <thead className="bg-slate-100 text-slate-700">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Date</th>
-                  <th className="px-4 py-3 text-left font-semibold">Patient ID</th>
+                  <th className="px-4 py-3 text-left font-semibold">Patient Name</th>
                   <th className="px-4 py-3 text-left font-semibold">Dentist</th>
+                  <th className="px-4 py-3 text-left font-semibold">Services</th>
                   <th className="px-4 py-3 text-left font-semibold">Status</th>
-                  <th className="px-4 py-3 text-left font-semibold">Fee</th>
+                  <th className="px-4 py-3 text-left font-semibold">Total Fee</th>
                 </tr>
               </thead>
               <tbody>
@@ -211,10 +264,11 @@ const ReportsPage = () => {
                     <td className="px-4 py-3">
                       {toDate(row.date) ? format(toDate(row.date), 'PP') : '-'}
                     </td>
-                    <td className="px-4 py-3">{row.patientId || '-'}</td>
-                    <td className="px-4 py-3">{row.dentist || '-'}</td>
+                    <td className="px-4 py-3">{getPatientName(row.patientId)}</td>
+                    <td className="px-4 py-3">{row.dentistName || row.dentist || '-'}</td>
+                    <td className="px-4 py-3">{getAppointmentServices(row)}</td>
                     <td className="px-4 py-3 capitalize">{row.status || '-'}</td>
-                    <td className="px-4 py-3">{Number(row.fee) || 0}</td>
+                    <td className="px-4 py-3">{formatPeso(getAppointmentTotalFee(row))}</td>
                   </tr>
                 ))}
               </tbody>
@@ -262,18 +316,20 @@ const ReportsPage = () => {
               <thead className="bg-slate-100 text-slate-700">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Date</th>
-                  <th className="px-4 py-3 text-left font-semibold">Patient ID</th>
+                  <th className="px-4 py-3 text-left font-semibold">Patient Name</th>
+                  <th className="px-4 py-3 text-left font-semibold">Services</th>
                   <th className="px-4 py-3 text-left font-semibold">Status</th>
-                  <th className="px-4 py-3 text-left font-semibold">Fee</th>
+                  <th className="px-4 py-3 text-left font-semibold">Total Fee</th>
                 </tr>
               </thead>
               <tbody>
                 {financialRows.map((row) => (
                   <tr key={row.id} className="border-t border-slate-100">
                     <td className="px-4 py-3">{row.date ? format(row.date, 'PP') : '-'}</td>
-                    <td className="px-4 py-3">{row.patient}</td>
+                    <td className="px-4 py-3">{row.patientName}</td>
+                    <td className="px-4 py-3">{row.services}</td>
                     <td className="px-4 py-3 capitalize">{row.status}</td>
-                    <td className="px-4 py-3">{row.fee}</td>
+                    <td className="px-4 py-3">{formatPeso(row.totalFee)}</td>
                   </tr>
                 ))}
               </tbody>
