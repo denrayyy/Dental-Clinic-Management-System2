@@ -9,6 +9,7 @@ import DashboardScreen from '../screens/DashboardScreen'
 import PatientsScreen from '../screens/PatientsScreen'
 import AppointmentsScreen from '../screens/AppointmentsScreen'
 import ProfileScreen from '../screens/ProfileScreen'
+import TermsScreen from '../screens/TermsScreen'
 import DentistDashboardScreen from '../screens/dentist/DentistDashboardScreen'
 import DentistAppointmentsScreen from '../screens/dentist/DentistAppointmentsScreen'
 import DentistPatientsScreen from '../screens/dentist/DentistPatientsScreen'
@@ -92,7 +93,7 @@ const DentistTabs = () => {
 }
 
 const AppNavigator = () => {
-	const { isAuthenticated, isLoading, profile } = useAuth()
+	const { isAuthenticated, isLoading, profile, requiresTermsAcceptance } = useAuth()
 	const role = profile?.role || 'staff'
 
 	if (isLoading) {
@@ -103,7 +104,13 @@ const AppNavigator = () => {
 		<NavigationContainer>
 			<Stack.Navigator screenOptions={{ headerShown: false }}>
 				{isAuthenticated ? (
-					role === 'dentist' ? (
+					requiresTermsAcceptance ? (
+						<Stack.Screen
+							name="TermsGate"
+							component={TermsScreen}
+							initialParams={{ docType: 'terms', requireAcceptance: true }}
+						/>
+					) : role === 'dentist' ? (
 						<Stack.Screen name="DentistTabs" component={DentistTabs} />
 					) : (
 						<Stack.Screen name="StaffTabs" component={StaffTabs} />
@@ -111,6 +118,7 @@ const AppNavigator = () => {
 				) : (
 					<Stack.Screen name="Login" component={LoginScreen} />
 				)}
+				<Stack.Screen name="TermsScreen" component={TermsScreen} />
 			</Stack.Navigator>
 		</NavigationContainer>
 	)

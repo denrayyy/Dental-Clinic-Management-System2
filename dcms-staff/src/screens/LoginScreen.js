@@ -12,6 +12,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native'
+import { useNavigation } from '@react-navigation/native'
 import FormField from '../components/FormField'
 import { useAuth } from '../hooks/useAuth'
 
@@ -43,6 +44,7 @@ const getLoginErrorMessage = (error) => {
 }
 
 const LoginScreen = () => {
+  const navigation = useNavigation()
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -102,6 +104,14 @@ const LoginScreen = () => {
                 <Text style={styles.buttonText}>Login</Text>
               )}
             </Pressable>
+
+            <Text style={styles.legalText}>
+              By logging in, you agree to the
+              <Text style={styles.linkText} onPress={() => navigation.navigate('TermsScreen', { docType: 'terms' })}> Terms and Conditions</Text>
+              {' '}and
+              <Text style={styles.linkText} onPress={() => navigation.navigate('TermsScreen', { docType: 'privacy' })}> Privacy Policy</Text>
+              .
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -139,6 +149,17 @@ const styles = StyleSheet.create({
   keyboardContainer: {
     backgroundColor: '#f8fafc',
     flex: 1,
+  },
+  legalText: {
+    color: '#64748b',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: -6,
+    textAlign: 'center',
+  },
+  linkText: {
+    color: '#0f766e',
+    fontWeight: '700',
   },
   container: {
     alignItems: 'center',

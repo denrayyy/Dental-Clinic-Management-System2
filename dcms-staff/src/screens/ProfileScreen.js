@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   heroAccent: {
-    backgroundColor: '#d946ef',
+    backgroundColor: '#14b8a6',
     borderTopLeftRadius: 999,
     borderTopRightRadius: 999,
     bottom: -10,

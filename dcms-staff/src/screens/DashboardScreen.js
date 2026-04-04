@@ -4,7 +4,6 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getPatients } from '../services/patientService'
 import { getAppointments } from '../services/appointmentService'
-import StatCard from '../components/StatCard'
 import LoadingOverlay from '../components/LoadingOverlay'
 import { useAuth } from '../hooks/useAuth'
 
@@ -13,6 +12,7 @@ const DashboardScreen = () => {
   const { profile } = useAuth()
   const [stats, setStats] = useState({
     patients: 0,
+    totalAppointments: 0,
     todayAppointments: 0,
     pending: 0,
     completed: 0,
@@ -22,6 +22,15 @@ const DashboardScreen = () => {
   const [refreshing, setRefreshing] = useState(false)
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const readableToday = useMemo(
+    () =>
+      new Date().toLocaleDateString('en-PH', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      }),
+    [],
+  )
 
   const loadDashboard = useCallback(async () => {
     setError('')
@@ -34,6 +43,7 @@ const DashboardScreen = () => {
 
       setStats({
         patients: patients.length,
+        totalAppointments: appointments.length,
         todayAppointments: todayAppointments.length,
         pending,
         completed,
@@ -69,29 +79,56 @@ const DashboardScreen = () => {
     >
       <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
 
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.title}>Clinic Dashboard</Text>
-          <Text style={styles.subtitle}>Hello, {profile?.name || 'Staff'}.</Text>
+      <View style={styles.heroCard}>
+        <Text style={styles.heroEyebrow}>Clinic Command Center</Text>
+        <Text style={styles.title}>Hello, {profile?.name || 'Staff'}.</Text>
+        <Text style={styles.subtitle}>Track appointments and patient flow at a glance.</Text>
+        <Text style={styles.heroDate}>{readableToday}</Text>
+      </View>
+
+      <View style={styles.statsGrid}>
+        <View style={[styles.metricCard, styles.metricCardGreen]}>
+          <Text style={styles.metricLabel}>Total Patients</Text>
+          <Text style={styles.metricValue}>{stats.patients}</Text>
+        </View>
+        <View style={[styles.metricCard, styles.metricCardBlue]}>
+          <Text style={styles.metricLabel}>Appointments Today</Text>
+          <Text style={styles.metricValue}>{stats.todayAppointments}</Text>
         </View>
       </View>
 
       <View style={styles.statsGrid}>
-        <StatCard label="Total Patients" value={stats.patients} color="#0f766e" />
-        <StatCard label="Appointments Today" value={stats.todayAppointments} color="#1d4ed8" />
+        <View style={[styles.metricCard, styles.metricCardAmber]}>
+          <Text style={styles.metricLabel}>Pending</Text>
+          <Text style={styles.metricValue}>{stats.pending}</Text>
+        </View>
+        <View style={[styles.metricCard, styles.metricCardMint]}>
+          <Text style={styles.metricLabel}>Completed</Text>
+          <Text style={styles.metricValue}>{stats.completed}</Text>
+        </View>
       </View>
 
-      <View style={styles.statsGrid}>
-        <StatCard label="Pending" value={stats.pending} color="#d97706" />
-        <StatCard label="Completed" value={stats.completed} color="#16a34a" />
+      <View style={styles.quickStatsRow}>
+        <View style={styles.quickStatCard}>
+          <Text style={styles.quickStatLabel}>All Appointments</Text>
+          <Text style={styles.quickStatValue}>{stats.totalAppointments}</Text>
+        </View>
+        <View style={styles.quickStatCard}>
+          <Text style={styles.quickStatLabel}>Completion Rate</Text>
+          <Text style={styles.quickStatValue}>
+            {stats.totalAppointments
+              ? `${Math.round((stats.completed / stats.totalAppointments) * 100)}%`
+              : '0%'}
+          </Text>
+        </View>
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.tipCard}>
-        <Text style={styles.tipTitle}>Quick Note</Text>
+        <Text style={styles.tipTitle}>Daily Insight</Text>
         <Text style={styles.tipText}>
-          Keep appointment statuses updated so dashboard numbers stay accurate in real time.
+          Keep appointment statuses updated to maintain reliable analytics and smoother handoffs.
         </Text>
       </View>
     </ScrollView>
@@ -111,12 +148,6 @@ const styles = StyleSheet.create({
     marginTop: 14,
     padding: 10,
   },
-  headerRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
   logo: {
     alignSelf: 'center',
     height: 74,
@@ -132,33 +163,113 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 10,
   },
-  subtitle: {
+  heroCard: {
+    backgroundColor: '#0f172a',
+    borderRadius: 16,
+    marginBottom: 14,
+    padding: 16,
+  },
+  heroDate: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 10,
+  },
+  heroEyebrow: {
+    color: '#93c5fd',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  metricCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    flex: 1,
+    minHeight: 102,
+    padding: 14,
+  },
+  metricCardAmber: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#fde68a',
+  },
+  metricCardBlue: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+  },
+  metricCardGreen: {
+    backgroundColor: '#ecfeff',
+    borderColor: '#99f6e4',
+  },
+  metricCardMint: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+  },
+  metricLabel: {
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  metricValue: {
+    color: '#0f172a',
+    fontSize: 32,
+    fontWeight: '900',
+    marginTop: 8,
+  },
+  quickStatsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 4,
+    marginTop: 4,
+  },
+  quickStatCard: {
+    backgroundColor: '#fff',
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    borderWidth: 1,
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  quickStatLabel: {
     color: '#64748b',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  quickStatValue: {
+    color: '#0f172a',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  subtitle: {
+    color: '#e2e8f0',
     fontSize: 13,
-    marginTop: 2,
+    marginTop: 4,
   },
   tipCard: {
-    backgroundColor: '#ecfeff',
-    borderColor: '#a5f3fc',
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
     borderRadius: 14,
     borderWidth: 1,
     marginTop: 16,
     padding: 14,
   },
   tipText: {
-    color: '#155e75',
+    color: '#475569',
     fontSize: 13,
     lineHeight: 20,
     marginTop: 6,
   },
   tipTitle: {
-    color: '#0e7490',
+    color: '#0f172a',
     fontSize: 15,
     fontWeight: '800',
   },
   title: {
-    color: '#0f172a',
-    fontSize: 22,
+    color: '#fff',
+    fontSize: 24,
     fontWeight: '800',
   },
 })

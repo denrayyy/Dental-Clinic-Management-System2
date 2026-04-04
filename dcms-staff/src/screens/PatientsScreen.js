@@ -43,6 +43,7 @@ const PatientsScreen = () => {
   const { user } = useAuth()
   const [patients, setPatients] = useState([])
   const [search, setSearch] = useState('')
+  const [genderFilter, setGenderFilter] = useState('all')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -76,12 +77,15 @@ const PatientsScreen = () => {
   const filteredPatients = useMemo(() => {
     const keyword = search.trim().toLowerCase()
 
-    if (!keyword) {
-      return patients
-    }
+    return patients.filter((patient) => {
+      const fullName = String(patient.fullName || '').toLowerCase()
+      const gender = String(patient.gender || '').trim().toLowerCase()
+      const matchesSearch = !keyword || fullName.includes(keyword)
+      const matchesGender = genderFilter === 'all' || gender === genderFilter
 
-    return patients.filter((patient) => patient.fullName.toLowerCase().includes(keyword))
-  }, [patients, search])
+      return matchesSearch && matchesGender
+    })
+  }, [genderFilter, patients, search])
 
   const onRefresh = () => {
     setRefreshing(true)
@@ -182,6 +186,24 @@ const PatientsScreen = () => {
           onChangeText={setSearch}
           placeholder="Type patient name"
         />
+
+        <View style={styles.filterRow}>
+          {['all', 'male', 'female'].map((filter) => {
+            const isActive = genderFilter === filter
+
+            return (
+              <Pressable
+                key={filter}
+                style={[styles.filterChip, isActive && styles.filterChipActive]}
+                onPress={() => setGenderFilter(filter)}
+              >
+                <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                  {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                </Text>
+              </Pressable>
+            )
+          })}
+        </View>
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -281,6 +303,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     width: 56,
+  },
+  filterChip: {
+    backgroundColor: '#fff',
+    borderColor: '#cbd5e1',
+    borderRadius: 999,
+    borderWidth: 1,
+    marginRight: 8,
+    marginTop: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  filterChipActive: {
+    backgroundColor: '#0f766e',
+    borderColor: '#0f766e',
+  },
+  filterChipText: {
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  filterChipTextActive: {
+    color: '#fff',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    marginTop: 2,
   },
   iconButton: {
     backgroundColor: '#f1f5f9',
