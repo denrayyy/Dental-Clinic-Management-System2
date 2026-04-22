@@ -6,10 +6,12 @@ import { getPatients } from '../services/patientService'
 import { getAppointments } from '../services/appointmentService'
 import LoadingOverlay from '../components/LoadingOverlay'
 import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../hooks/useTheme'
 
 const DashboardScreen = () => {
   const insets = useSafeAreaInsets()
   const { profile } = useAuth()
+  const { colors } = useTheme()
   const [stats, setStats] = useState({
     patients: 0,
     totalAppointments: 0,
@@ -73,7 +75,7 @@ const DashboardScreen = () => {
 
   return (
     <ScrollView
-      style={[styles.screen, { paddingTop: insets.top }]}
+      style={[styles.screen, { backgroundColor: colors.screenBg, paddingTop: insets.top }]}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
@@ -109,13 +111,13 @@ const DashboardScreen = () => {
       </View>
 
       <View style={styles.quickStatsRow}>
-        <View style={styles.quickStatCard}>
-          <Text style={styles.quickStatLabel}>All Appointments</Text>
-          <Text style={styles.quickStatValue}>{stats.totalAppointments}</Text>
+        <View style={[styles.quickStatCard, { backgroundColor: colors.panelBg, borderColor: colors.line }]}>
+          <Text style={[styles.quickStatLabel, { color: colors.mutedText }]}>All Appointments</Text>
+          <Text style={[styles.quickStatValue, { color: colors.strongText }]}>{stats.totalAppointments}</Text>
         </View>
-        <View style={styles.quickStatCard}>
-          <Text style={styles.quickStatLabel}>Completion Rate</Text>
-          <Text style={styles.quickStatValue}>
+        <View style={[styles.quickStatCard, { backgroundColor: colors.panelBg, borderColor: colors.line }]}>
+          <Text style={[styles.quickStatLabel, { color: colors.mutedText }]}>Completion Rate</Text>
+          <Text style={[styles.quickStatValue, { color: colors.strongText }]}>
             {stats.totalAppointments
               ? `${Math.round((stats.completed / stats.totalAppointments) * 100)}%`
               : '0%'}
@@ -123,11 +125,11 @@ const DashboardScreen = () => {
         </View>
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { backgroundColor: colors.dangerBg, color: colors.dangerText }]}>{error}</Text> : null}
 
-      <View style={styles.tipCard}>
-        <Text style={styles.tipTitle}>Daily Insight</Text>
-        <Text style={styles.tipText}>
+      <View style={[styles.tipCard, { backgroundColor: colors.sectionBg, borderColor: colors.line }]}>
+        <Text style={[styles.tipTitle, { color: colors.strongText }]}>Daily Insight</Text>
+        <Text style={[styles.tipText, { color: colors.labelText }]}>
           Keep appointment statuses updated to maintain reliable analytics and smoother handoffs.
         </Text>
       </View>
@@ -141,9 +143,7 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   error: {
-    backgroundColor: '#fee2e2',
     borderRadius: 10,
-    color: '#b91c1c',
     fontSize: 13,
     marginTop: 14,
     padding: 10,
@@ -155,7 +155,6 @@ const styles = StyleSheet.create({
     width: 74,
   },
   screen: {
-    backgroundColor: '#f8fafc',
     flex: 1,
   },
   statsGrid: {
@@ -233,12 +232,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   quickStatLabel: {
-    color: '#64748b',
     fontSize: 12,
     fontWeight: '700',
   },
   quickStatValue: {
-    color: '#0f172a',
     fontSize: 22,
     fontWeight: '800',
     marginTop: 4,
@@ -257,13 +254,11 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   tipText: {
-    color: '#475569',
     fontSize: 13,
     lineHeight: 20,
     marginTop: 6,
   },
   tipTitle: {
-    color: '#0f172a',
     fontSize: 15,
     fontWeight: '800',
   },

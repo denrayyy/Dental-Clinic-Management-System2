@@ -4,6 +4,7 @@ import {
   Image,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -43,16 +44,55 @@ const getLoginErrorMessage = (error) => {
   return 'Unable to sign in right now. Please try again.'
 }
 
+const getResetPasswordErrorMessage = (error) => {
+  const code = error?.code || ''
+
+  if (code === 'auth/invalid-email') {
+    return 'Please enter a valid email address.'
+  }
+
+  if (code === 'auth/user-not-found') {
+    return 'No account found for this email address.'
+  }
+
+  if (code === 'auth/operation-not-allowed') {
+    return 'Email/password sign-in is disabled in Firebase Auth settings.'
+  }
+
+  if (code === 'auth/too-many-requests') {
+    return 'Too many requests. Please try again later.'
+  }
+
+  if (code === 'auth/expired-action-code') {
+    return 'Reset code has expired. Request a new reset email.'
+  }
+
+  if (code === 'auth/invalid-action-code') {
+    return 'Reset code is invalid. Double-check it or request a new reset email.'
+  }
+
+  if (code === 'auth/weak-password') {
+    return 'Please choose a stronger new password.'
+  }
+
+  return 'Unable to send reset link right now. Please try again.'
+}
+
 const LoginScreen = () => {
   const navigation = useNavigation()
-  const { login } = useAuth()
+  const { login, forgotPassword } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [resetEmail, setResetEmail] = useState('')
   const [error, setError] = useState('')
+  const [resetMessage, setResetMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isResettingPassword, setIsResettingPassword] = useState(false)
+  const [isResetModalVisible, setIsResetModalVisible] = useState(false)
 
   const handleLogin = async () => {
     setError('')
+    setResetMessage('')
     setIsSubmitting(true)
 
     try {
@@ -62,6 +102,41 @@ const LoginScreen = () => {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleForgotPassword = async () => {
+    setError('')
+    setResetMessage('')
+
+    const normalizedEmail = (resetEmail || email).trim()
+    if (!normalizedEmail) {
+      setError('Enter your email first to receive a reset link.')
+      return
+    }
+
+    setIsResettingPassword(true)
+
+    try {
+      await forgotPassword(normalizedEmail)
+      setResetEmail(normalizedEmail)
+      setResetMessage('Reset link sent. Please check your email inbox.')
+      setIsResetModalVisible(false)
+    } catch (resetError) {
+      setError(getResetPasswordErrorMessage(resetError))
+    } finally {
+      setIsResettingPassword(false)
+    }
+  }
+
+  const openResetModal = () => {
+    setError('')
+    setResetMessage('')
+    setResetEmail(email.trim())
+    setIsResetModalVisible(true)
+  }
+
+  const closeResetModal = () => {
+    setIsResetModalVisible(false)
   }
 
   return (
@@ -75,8 +150,8 @@ const LoginScreen = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <Image source={require('../../assets/logo.png')} style={styles.logoTop} resizeMode="contain" />
           <View style={styles.card}>
-            <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
             <Text style={styles.title}>Welcome back</Text>
 
             <FormField
@@ -86,6 +161,10 @@ const LoginScreen = () => {
               autoCapitalize="none"
               keyboardType="email-address"
               placeholder="staff@clinic.com"
+              labelStyle={styles.inputLabel}
+              inputStyle={styles.inputLight}
+              inputTextColor="#0f172a"
+              inputPlaceholderColor="#94a3b8"
             />
             <FormField
               label="Password"
@@ -93,9 +172,20 @@ const LoginScreen = () => {
               onChangeText={setPassword}
               secureTextEntry
               placeholder="Password"
+              labelStyle={styles.inputLabel}
+              inputStyle={styles.inputLight}
+              inputTextColor="#0f172a"
+              inputPlaceholderColor="#94a3b8"
             />
 
+            <Pressable onPress={openResetModal}>
+              <Text style={styles.forgotPasswordLink}>
+                Forgot password?
+              </Text>
+            </Pressable>
+
             {error ? <Text style={styles.error}>{error}</Text> : null}
+            {resetMessage ? <Text style={styles.resetSuccess}>{resetMessage}</Text> : null}
 
             <Pressable style={styles.button} onPress={handleLogin} disabled={isSubmitting}>
               {isSubmitting ? (
@@ -114,6 +204,44 @@ const LoginScreen = () => {
             </Text>
           </View>
         </ScrollView>
+
+        <Modal
+          animationType="fade"
+          transparent
+          visible={isResetModalVisible}
+          onRequestClose={closeResetModal}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Reset Password</Text>
+
+              <Text style={styles.modalSubtitle}>Enter your email to receive a reset link.</Text>
+              <FormField
+                label="Email"
+                value={resetEmail}
+                onChangeText={setResetEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholder="staff@clinic.com"
+                labelStyle={styles.inputLabel}
+                inputStyle={styles.inputLight}
+                inputTextColor="#0f172a"
+                inputPlaceholderColor="#94a3b8"
+              />
+              <Pressable style={styles.resetButton} onPress={handleForgotPassword} disabled={isResettingPassword}>
+                {isResettingPassword ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Send Reset Link</Text>
+                )}
+              </Pressable>
+
+              <Pressable onPress={closeResetModal}>
+                <Text style={styles.modalCloseText}>Close</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   )
@@ -134,12 +262,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     borderColor: '#e2e8f0',
     borderRadius: 16,
     borderWidth: 1,
     elevation: 2,
-    padding: 16,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 22,
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -149,6 +280,13 @@ const styles = StyleSheet.create({
   keyboardContainer: {
     backgroundColor: '#f8fafc',
     flex: 1,
+  },
+  inputLabel: {
+    color: '#334155',
+  },
+  inputLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
   },
   legalText: {
     color: '#64748b',
@@ -166,7 +304,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'flex-start',
     padding: 14,
-    paddingTop: 120,
+    paddingTop: 150,
   },
   error: {
     backgroundColor: '#fee2e2',
@@ -178,11 +316,70 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
-  logo: {
+  forgotPasswordLink: {
+    alignSelf: 'flex-start',
+    color: '#0f766e',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 10,
+    marginTop: 2,
+    textAlign: 'left',
+  },
+  modalBackdrop: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    maxWidth: 420,
+    padding: 16,
+    width: '100%',
+  },
+  modalCloseText: {
+    color: '#0f766e',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    color: '#0f172a',
+    fontSize: 19,
+    fontWeight: '800',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  resetButton: {
+    backgroundColor: '#0c4a6e',
+    borderRadius: 10,
+    marginTop: 4,
+    paddingVertical: 11,
+  },
+  logoTop: {
     alignSelf: 'center',
     height: 72,
-    marginBottom: 6,
+    marginBottom: 2,
     width: 72,
+  },
+  resetSuccess: {
+    backgroundColor: '#dcfce7',
+    borderRadius: 10,
+    color: '#166534',
+    fontSize: 13,
+    marginBottom: 12,
+    marginTop: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   title: {
     color: '#0f172a',

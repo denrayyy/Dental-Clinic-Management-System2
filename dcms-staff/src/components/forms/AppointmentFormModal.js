@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import FormField from '../FormField'
+import { useTheme } from '../../hooks/useTheme'
 
 const initialForm = {
   patientId: '',
@@ -113,6 +114,7 @@ const AppointmentFormModal = ({
   onSubmit,
   onClose,
 }) => {
+  const { colors } = useTheme()
   const [form, setForm] = useState(initialForm)
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false)
   const [patientSearch, setPatientSearch] = useState('')
@@ -283,34 +285,34 @@ const AppointmentFormModal = ({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.container}>
-        <Text style={styles.header}>{appointment ? 'Update Appointment' : 'Create Appointment'}</Text>
+      <View style={[styles.container, { backgroundColor: colors.screenBg }]}>
+        <Text style={[styles.header, { color: colors.strongText }]}>{appointment ? 'Update Appointment' : 'Create Appointment'}</Text>
 
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.label}>Patient</Text>
+          <Text style={[styles.label, { color: colors.labelText }]}>Patient</Text>
           <Pressable
-            style={styles.dropdownTrigger}
+            style={[styles.dropdownTrigger, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
             onPress={() => setIsPatientDropdownOpen((prev) => !prev)}
             disabled={!patients.length}
           >
-            <Text style={selectedPatient ? styles.dropdownValue : styles.dropdownPlaceholder}>
+            <Text style={[selectedPatient ? styles.dropdownValue : styles.dropdownPlaceholder, { color: selectedPatient ? colors.inputText : colors.inputPlaceholder }]}>
               {selectedPatient
                 ? selectedPatient.fullName
                 : patients.length
                   ? 'Select patient'
                   : 'No patients available'}
             </Text>
-            <Text style={styles.dropdownChevron}>{isPatientDropdownOpen ? '▲' : '▼'}</Text>
+            <Text style={[styles.dropdownChevron, { color: colors.mutedText }]}>{isPatientDropdownOpen ? '▲' : '▼'}</Text>
           </Pressable>
 
           {isPatientDropdownOpen && patients.length ? (
-            <View style={styles.dropdownMenuCompact}>
+            <View style={[styles.dropdownMenuCompact, { backgroundColor: colors.panelBg, borderColor: colors.inputBorder }]}>
               <TextInput
                 value={patientSearch}
                 onChangeText={setPatientSearch}
                 placeholder="Search patient name"
-                placeholderTextColor="#94a3b8"
-                style={styles.searchInput}
+                placeholderTextColor={colors.inputPlaceholder}
+                style={[styles.searchInput, { backgroundColor: colors.inputBg, borderBottomColor: colors.line, color: colors.inputText }]}
               />
 
               <ScrollView nestedScrollEnabled style={styles.patientResults}>
@@ -320,10 +322,14 @@ const AppointmentFormModal = ({
                   return (
                     <Pressable
                       key={patient.id}
-                      style={[styles.dropdownOption, isSelected && styles.patientChipActive]}
+                      style={[
+                        styles.dropdownOption,
+                        { borderBottomColor: colors.line },
+                        isSelected && styles.patientChipActive,
+                      ]}
                       onPress={() => selectPatient(patient)}
                     >
-                      <Text style={[styles.dropdownOptionText, isSelected && styles.patientTextActive]}>
+                      <Text style={[styles.dropdownOptionText, { color: colors.labelText }, isSelected && styles.patientTextActive]}>
                         {patient.fullName}
                       </Text>
                     </Pressable>
@@ -331,17 +337,17 @@ const AppointmentFormModal = ({
                 })}
 
                 {!visiblePatients.length ? (
-                  <Text style={styles.emptyDropdownText}>No patients found.</Text>
+                  <Text style={[styles.emptyDropdownText, { color: colors.mutedText }]}>No patients found.</Text>
                 ) : null}
               </ScrollView>
 
               {!patientSearch.trim() && hiddenPatientCount > 0 ? (
-                <Text style={styles.helperText}>Type in search to view {hiddenPatientCount} more patients.</Text>
+                <Text style={[styles.helperText, { color: colors.mutedText }]}>Type in search to view {hiddenPatientCount} more patients.</Text>
               ) : null}
             </View>
           ) : null}
 
-          {!patients.length ? <Text style={styles.helperText}>No patients found.</Text> : null}
+          {!patients.length ? <Text style={[styles.helperText, { color: colors.mutedText }]}>No patients found.</Text> : null}
 
           <FormField
             label="Date (YYYY-MM-DD)"
@@ -360,34 +366,38 @@ const AppointmentFormModal = ({
             maxLength={5}
           />
 
-          <Text style={styles.label}>Assign Dentist</Text>
+          <Text style={[styles.label, { color: colors.labelText }]}>Assign Dentist</Text>
           <Pressable
-            style={styles.dropdownTrigger}
+            style={[styles.dropdownTrigger, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
             onPress={() => setIsDentistDropdownOpen((prev) => !prev)}
             disabled={!dentists.length}
           >
-            <Text style={selectedDentist ? styles.dropdownValue : styles.dropdownPlaceholder}>
+            <Text style={[selectedDentist ? styles.dropdownValue : styles.dropdownPlaceholder, { color: selectedDentist ? colors.inputText : colors.inputPlaceholder }]}>
               {selectedDentist
                 ? formatDentistName(selectedDentist.name)
                 : dentists.length
                   ? 'Select dentist'
                   : 'No active dentists available'}
             </Text>
-            <Text style={styles.dropdownChevron}>{isDentistDropdownOpen ? '▲' : '▼'}</Text>
+            <Text style={[styles.dropdownChevron, { color: colors.mutedText }]}>{isDentistDropdownOpen ? '▲' : '▼'}</Text>
           </Pressable>
 
           {isDentistDropdownOpen && dentists.length ? (
-            <View style={styles.dropdownMenu}>
+            <View style={[styles.dropdownMenu, { backgroundColor: colors.panelBg, borderColor: colors.inputBorder }]}>
               {dentists.map((dentist) => {
                 const isSelected = form.dentistId === dentist.id
 
                 return (
                   <Pressable
                     key={dentist.id}
-                    style={[styles.dropdownOption, isSelected && styles.patientChipActive]}
+                    style={[
+                      styles.dropdownOption,
+                      { borderBottomColor: colors.line },
+                      isSelected && styles.patientChipActive,
+                    ]}
                     onPress={() => selectDentist(dentist)}
                   >
-                    <Text style={[styles.dropdownOptionText, isSelected && styles.patientTextActive]}>
+                    <Text style={[styles.dropdownOptionText, { color: colors.labelText }, isSelected && styles.patientTextActive]}>
                       {formatDentistName(dentist.name)}
                     </Text>
                   </Pressable>
@@ -397,12 +407,12 @@ const AppointmentFormModal = ({
           ) : null}
 
           {!dentists.length ? (
-            <Text style={styles.helperText}>No active dentists found.</Text>
+            <Text style={[styles.helperText, { color: colors.mutedText }]}>No active dentists found.</Text>
           ) : null}
 
-          <Text style={styles.label}>Services</Text>
+          <Text style={[styles.label, { color: colors.labelText }]}>Services</Text>
           {services.length ? (
-            <View style={styles.serviceListBox}>
+            <View style={[styles.serviceListBox, { backgroundColor: colors.panelBg, borderColor: colors.inputBorder }]}>
               <ScrollView nestedScrollEnabled style={styles.serviceListScroll}>
                 {services.map((service) => {
                   const isSelected = selectedServiceIds.has(service.id)
@@ -410,18 +420,22 @@ const AppointmentFormModal = ({
                   return (
                     <Pressable
                       key={service.id}
-                      style={[styles.serviceRow, isSelected && styles.patientChipActive]}
+                      style={[
+                        styles.serviceRow,
+                        { borderBottomColor: colors.line },
+                        isSelected && styles.patientChipActive,
+                      ]}
                       onPress={() => toggleService(service)}
                     >
                       <View style={styles.checkboxWrap}>
-                        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                          <Text style={styles.checkboxText}>{isSelected ? '✓' : ''}</Text>
+                        <View style={[styles.checkbox, { borderColor: colors.inputBorder }, isSelected && styles.checkboxSelected]}>
+                          <Text style={[styles.checkboxText, { color: isSelected ? '#0f766e' : 'transparent' }]}>{isSelected ? '✓' : ''}</Text>
                         </View>
-                        <Text style={[styles.serviceText, isSelected && styles.patientTextActive]}>
+                        <Text style={[styles.serviceText, { color: colors.labelText }, isSelected && styles.patientTextActive]}>
                           {service.name}
                         </Text>
                       </View>
-                      <Text style={[styles.servicePrice, isSelected && styles.patientTextActive]}>
+                      <Text style={[styles.servicePrice, { color: colors.inputText }, isSelected && styles.patientTextActive]}>
                         {formatPeso(service.price)}
                       </Text>
                     </Pressable>
@@ -432,30 +446,33 @@ const AppointmentFormModal = ({
           ) : null}
 
           {!services.length ? (
-            <Text style={styles.helperText}>No services found.</Text>
+            <Text style={[styles.helperText, { color: colors.mutedText }]}>No services found.</Text>
           ) : null}
 
           {form.services.length ? (
-            <View style={styles.selectedListBox}>
-              <Text style={styles.selectedTitle}>Selected Services</Text>
+            <View style={[styles.selectedListBox, { backgroundColor: colors.panelBg, borderColor: colors.inputBorder }]}>
+              <Text style={[styles.selectedTitle, { color: colors.strongText }]}>Selected Services</Text>
               {form.services.map((service) => (
                 <View key={service.serviceId} style={styles.selectedRow}>
-                  <Text style={styles.selectedName}>• {service.name}</Text>
-                  <Text style={styles.selectedPrice}>{formatPeso(service.price)}</Text>
+                  <Text style={[styles.selectedName, { color: colors.labelText }]}>• {service.name}</Text>
+                  <Text style={[styles.selectedPrice, { color: colors.inputText }]}>{formatPeso(service.price)}</Text>
                 </View>
               ))}
             </View>
           ) : null}
 
-          <View style={styles.priceBox}>
-            <Text style={styles.priceLabel}>Total</Text>
-            <Text style={styles.priceValue}>{formatPeso(form.totalPrice)}</Text>
+          <View style={[styles.priceBox, { backgroundColor: colors.sectionBg, borderColor: colors.line }]}>
+            <Text style={[styles.priceLabel, { color: colors.brandPrimary }]}>Total</Text>
+            <Text style={[styles.priceValue, { color: colors.strongText }]}>{formatPeso(form.totalPrice)}</Text>
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
-          <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose}>
-            <Text style={[styles.buttonText, styles.cancelText]}>Cancel</Text>
+        <View style={[styles.footer, { borderTopColor: colors.line, backgroundColor: colors.screenBg }]}>
+          <Pressable
+            style={[styles.button, styles.cancelButton, { backgroundColor: colors.panelBg, borderColor: colors.inputBorder }]}
+            onPress={onClose}
+          >
+            <Text style={[styles.buttonText, styles.cancelText, { color: colors.labelText }]}>Cancel</Text>
           </Pressable>
           <Pressable
             style={[styles.button, styles.saveButton, (!isValid || isSubmitting) && styles.disabled]}
@@ -508,13 +525,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   cancelButton: {
-    backgroundColor: '#e2e8f0',
+    borderWidth: 1,
   },
   cancelText: {
     color: '#1e293b',
   },
   container: {
-    backgroundColor: '#f8fafc',
     flex: 1,
     paddingTop: 58,
   },
@@ -531,15 +547,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   dropdownMenu: {
-    backgroundColor: '#fff',
-    borderColor: '#cbd5e1',
     borderRadius: 10,
     borderWidth: 1,
     marginBottom: 10,
     overflow: 'hidden',
   },
   dropdownOption: {
-    borderBottomColor: '#e2e8f0',
     borderBottomWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -555,8 +568,6 @@ const styles = StyleSheet.create({
   },
   dropdownTrigger: {
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderColor: '#cbd5e1',
     borderRadius: 10,
     borderWidth: 1,
     flexDirection: 'row',
@@ -571,7 +582,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   footer: {
-    borderTopColor: '#e2e8f0',
     borderTopWidth: 1,
     flexDirection: 'row',
     gap: 10,
@@ -606,17 +616,12 @@ const styles = StyleSheet.create({
     maxHeight: 170,
   },
   searchInput: {
-    backgroundColor: '#f8fafc',
-    borderBottomColor: '#e2e8f0',
     borderBottomWidth: 1,
-    color: '#0f172a',
     fontSize: 13,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   dropdownMenuCompact: {
-    backgroundColor: '#fff',
-    borderColor: '#cbd5e1',
     borderRadius: 10,
     borderWidth: 1,
     marginBottom: 10,
@@ -632,8 +637,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f766e',
   },
   selectedListBox: {
-    backgroundColor: '#fff',
-    borderColor: '#cbd5e1',
     borderRadius: 10,
     borderWidth: 1,
     marginBottom: 10,
@@ -664,8 +667,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   serviceListBox: {
-    backgroundColor: '#fff',
-    borderColor: '#cbd5e1',
     borderRadius: 10,
     borderWidth: 1,
     marginBottom: 10,
@@ -682,7 +683,6 @@ const styles = StyleSheet.create({
   },
   serviceRow: {
     alignItems: 'center',
-    borderBottomColor: '#e2e8f0',
     borderBottomWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -6,10 +6,12 @@ import LoadingOverlay from '../../components/LoadingOverlay'
 import { useAuth } from '../../hooks/useAuth'
 import { getAppointmentsByDentist } from '../../services/appointmentService'
 import { getPatientsByIds } from '../../services/patientService'
+import { useTheme } from '../../hooks/useTheme'
 
 const DentistPatientsScreen = () => {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
+  const { colors } = useTheme()
   const [patients, setPatients] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -83,16 +85,19 @@ const DentistPatientsScreen = () => {
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+    <View style={[styles.screen, { backgroundColor: colors.screenBg, paddingTop: insets.top }]}>
+      {error ? <Text style={[styles.error, { backgroundColor: colors.dangerBg, color: colors.dangerText }]}>{error}</Text> : null}
 
       <View style={styles.controlsWrap}>
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search name, contact, address"
-          placeholderTextColor="#94a3b8"
-          style={styles.searchInput}
+          placeholderTextColor={colors.inputPlaceholder}
+          style={[
+            styles.searchInput,
+            { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.inputText },
+          ]}
         />
         <View style={styles.filterRow}>
           {genderOptions.map((gender) => {
@@ -100,10 +105,14 @@ const DentistPatientsScreen = () => {
             return (
               <Pressable
                 key={gender}
-                style={[styles.filterChip, isActive && styles.filterChipActive]}
+                style={[
+                  styles.filterChip,
+                  { borderColor: colors.inputBorder, backgroundColor: colors.panelBg },
+                  isActive && styles.filterChipActive,
+                ]}
                 onPress={() => setGenderFilter(gender)}
               >
-                <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.labelText }, isActive && styles.filterChipTextActive]}>
                   {gender === 'all' ? 'All' : gender}
                 </Text>
               </Pressable>
@@ -121,17 +130,17 @@ const DentistPatientsScreen = () => {
         ]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
-          <Text style={styles.empty}>
+          <Text style={[styles.empty, { color: colors.mutedText }]}>
             {hasActiveFilters ? 'No patients match your search or filter.' : 'No patients assigned.'}
           </Text>
         }
         renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.name}>{item.fullName}</Text>
-            <Text style={styles.detail}>Age: {item.age}</Text>
-            <Text style={styles.detail}>Gender: {item.gender}</Text>
-            <Text style={styles.detail}>Contact: {item.contact}</Text>
-            <Text style={styles.detail}>Address: {item.address}</Text>
+          <View style={[styles.card, { backgroundColor: colors.panelBg, borderColor: colors.line }]}>
+            <Text style={[styles.name, { color: colors.strongText }]}>{item.fullName}</Text>
+            <Text style={[styles.detail, { color: colors.labelText }]}>Age: {item.age}</Text>
+            <Text style={[styles.detail, { color: colors.labelText }]}>Gender: {item.gender}</Text>
+            <Text style={[styles.detail, { color: colors.labelText }]}>Contact: {item.contact}</Text>
+            <Text style={[styles.detail, { color: colors.labelText }]}>Address: {item.address}</Text>
           </View>
         )}
       />

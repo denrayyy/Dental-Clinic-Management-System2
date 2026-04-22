@@ -27,6 +27,7 @@ import { getPatients } from '../services/patientService'
 import { getActiveDentists } from '../services/staffDirectoryService'
 import { useAuth } from '../hooks/useAuth'
 import { addAuditLog } from '../services/logService'
+import { useTheme } from '../hooks/useTheme'
 
 const statusOptions = ['all', 'pending', 'completed', 'cancelled']
 
@@ -62,6 +63,7 @@ const formatDateInput = (value) => {
 const AppointmentsScreen = () => {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
+  const { colors } = useTheme()
   const [appointments, setAppointments] = useState([])
   const [patients, setPatients] = useState([])
   const [dentists, setDentists] = useState([])
@@ -323,9 +325,9 @@ const AppointmentsScreen = () => {
     const isCompleted = normalizedStatus === 'completed'
 
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.panelBg, borderColor: colors.line }]}>
         <View style={styles.cardHeader}>
-          <Text style={styles.name}>{patientLookup.get(item.patientId) || 'Unknown patient'}</Text>
+          <Text style={[styles.name, { color: colors.strongText }]}>{patientLookup.get(item.patientId) || 'Unknown patient'}</Text>
           <View style={styles.actions}>
             <Pressable
               style={[styles.iconButton, isCompleted && styles.iconButtonDisabled]}
@@ -347,11 +349,11 @@ const AppointmentsScreen = () => {
           </View>
         </View>
 
-        <Text style={styles.detail}>Date: {item.date} at {item.time}</Text>
-        <Text style={styles.detail}>Status: {normalizedStatus}</Text>
-        <Text style={styles.detail}>Dentist: {item.dentistName || item.dentist || 'Not assigned'}</Text>
-        <Text style={styles.detail}>Services: {getAppointmentServiceList(item)}</Text>
-        <Text style={styles.detail}>Total: {formatPeso(item.totalPrice ?? item.price ?? item.fee)}</Text>
+        <Text style={[styles.detail, { color: colors.labelText }]}>Date: {item.date} at {item.time}</Text>
+        <Text style={[styles.detail, { color: colors.labelText }]}>Status: {normalizedStatus}</Text>
+        <Text style={[styles.detail, { color: colors.labelText }]}>Dentist: {item.dentistName || item.dentist || 'Not assigned'}</Text>
+        <Text style={[styles.detail, { color: colors.labelText }]}>Services: {getAppointmentServiceList(item)}</Text>
+        <Text style={[styles.detail, { color: colors.labelText }]}>Total: {formatPeso(item.totalPrice ?? item.price ?? item.fee)}</Text>
 
         {isFinalStatus ? (
           <View style={[styles.finalStatusBadge, normalizedStatus === 'completed' ? styles.finalCompleted : styles.finalCancelled]}>
@@ -391,7 +393,7 @@ const AppointmentsScreen = () => {
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <View style={[styles.screen, { backgroundColor: colors.screenBg, paddingTop: insets.top }]}>
       <View style={styles.filterWrap}>
         <FormField
           label="Filter by date (YYYY-MM-DD)"
@@ -402,17 +404,21 @@ const AppointmentsScreen = () => {
           maxLength={10}
         />
 
-        <Text style={styles.statusLabel}>Status Filter</Text>
+        <Text style={[styles.statusLabel, { color: colors.labelText }]}>Status Filter</Text>
         <View style={styles.statusRow}>
           {statusOptions.map((status) => {
             const isActive = status === filterStatus
             return (
               <Pressable
                 key={status}
-                style={[styles.statusChip, isActive && styles.statusChipActive]}
+                style={[
+                  styles.statusChip,
+                  { borderColor: colors.inputBorder, backgroundColor: colors.panelBg },
+                  isActive && styles.statusChipActive,
+                ]}
                 onPress={() => setFilterStatus(status)}
               >
-                <Text style={[styles.statusChipText, isActive && styles.statusChipTextActive]}>
+                <Text style={[styles.statusChipText, { color: colors.labelText }, isActive && styles.statusChipTextActive]}>
                   {status}
                 </Text>
               </Pressable>
@@ -421,7 +427,7 @@ const AppointmentsScreen = () => {
         </View>
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { backgroundColor: colors.dangerBg, color: colors.dangerText }]}>{error}</Text> : null}
 
       <FlatList
         data={filteredAppointments}
@@ -429,7 +435,7 @@ const AppointmentsScreen = () => {
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={<Text style={styles.empty}>No appointments found.</Text>}
+        ListEmptyComponent={<Text style={[styles.empty, { color: colors.mutedText }]}>No appointments found.</Text>}
       />
 
       <Pressable
@@ -463,16 +469,19 @@ const AppointmentsScreen = () => {
         onRequestClose={() => setIsAmountModalVisible(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Complete Appointment</Text>
-            <Text style={styles.modalSubtitle}>Confirm the final service amount paid</Text>
+          <View style={[styles.modalCard, { backgroundColor: colors.modalBg, borderColor: colors.line }]}> 
+            <Text style={[styles.modalTitle, { color: colors.strongText }]}>Complete Appointment</Text>
+            <Text style={[styles.modalSubtitle, { color: colors.mutedText }]}>Confirm the final service amount paid</Text>
             <TextInput
               value={amountInput}
               onChangeText={setAmountInput}
               keyboardType="decimal-pad"
               placeholder="0"
-              placeholderTextColor="#94a3b8"
-              style={styles.amountInput}
+              placeholderTextColor={colors.inputPlaceholder}
+              style={[
+                styles.amountInput,
+                { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.inputText },
+              ]}
             />
 
             <View style={styles.modalActions}>
@@ -480,7 +489,7 @@ const AppointmentsScreen = () => {
                 style={[styles.modalButton, styles.modalCancelButton]}
                 onPress={() => setIsAmountModalVisible(false)}
               >
-                <Text style={[styles.modalButtonText, styles.modalCancelText]}>Cancel</Text>
+                <Text style={[styles.modalButtonText, styles.modalCancelText, { color: colors.modalCancelText }]}>Cancel</Text>
               </Pressable>
               <Pressable
                 style={[styles.modalButton, styles.modalSaveButton]}

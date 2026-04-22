@@ -90,7 +90,7 @@ const TermsScreen = () => {
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}> 
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <View style={styles.headerSpacer} />
         <Text style={styles.headerTitle}>{document.title}</Text>
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     borderColor: '#e2e8f0',
     borderRadius: 999,
     borderWidth: 1,
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     borderColor: '#e2e8f0',
     borderRadius: 14,
     borderWidth: 1,
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionBody: {
-    color: '#475569',
+    color: '#334155',
     fontSize: 13,
     lineHeight: 20,
     marginTop: 4,

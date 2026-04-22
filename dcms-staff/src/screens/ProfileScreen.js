@@ -9,6 +9,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TouchableWithoutFeedback,
   View,
@@ -20,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import FormField from '../components/FormField'
 import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../hooks/useTheme'
 
 const toTitleCase = (value) => {
   const text = String(value || '').trim()
@@ -49,6 +51,7 @@ const getInitials = (name, email) => {
 const ProfileScreen = () => {
   const insets = useSafeAreaInsets()
   const { user, profile, logout } = useAuth()
+  const { colors: theme, isDarkMode, setDarkMode } = useTheme()
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -211,10 +214,14 @@ const ProfileScreen = () => {
     }
   }
 
+  const handleDarkModeChange = async (nextValue) => {
+    await setDarkMode(nextValue)
+  }
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <KeyboardAvoidingView
-        style={styles.keyboardContainer}
+        style={[styles.keyboardContainer, { backgroundColor: theme.screenBg }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
@@ -225,8 +232,8 @@ const ProfileScreen = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.profileCard}>
-            <View style={styles.heroCard}>
+          <View style={[styles.profileCard, { backgroundColor: theme.panelBg, borderColor: theme.line }]}>
+            <View style={[styles.heroCard, { backgroundColor: theme.sectionBg }]}>
               <View style={styles.avatarWrap}>
                 {avatarUri ? (
                   <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
@@ -236,24 +243,41 @@ const ProfileScreen = () => {
                   </View>
                 )}
                 <Pressable
-                  style={[styles.avatarEditButton, isUpdatingAvatar && styles.disabledButton]}
+                  style={[
+                    styles.avatarEditButton,
+                    { backgroundColor: theme.panelBg, borderColor: theme.line },
+                    isUpdatingAvatar && styles.disabledButton,
+                  ]}
                   onPress={handleEditAvatar}
                   disabled={isUpdatingAvatar}
                 >
-                  <Ionicons name="create-outline" size={12} color="#334155" />
+                  <Ionicons name="create-outline" size={12} color={theme.subtleIcon} />
                 </Pressable>
               </View>
 
-              <Text style={styles.heroName}>{displayName}</Text>
-              <Text style={styles.heroRole}>{getRoleLabel(profile?.role)}</Text>
+              <Text style={[styles.heroName, { color: theme.nameText }]}>{displayName}</Text>
+              <Text style={[styles.heroRole, { color: theme.secondaryText }]}>{getRoleLabel(profile?.role)}</Text>
               <View style={styles.heroAccent} />
             </View>
 
             <View style={styles.infoSection}>
+              <View style={[styles.themeToggleRow, { borderBottomColor: theme.line }]}>
+                <View style={styles.themeToggleTextWrap}>
+                  <Text style={[styles.infoLabel, { color: theme.labelText, marginBottom: 2 }]}>Theme</Text>
+                  <Text style={[styles.themeToggleHint, { color: theme.mutedText }]}>Enable dark mode</Text>
+                </View>
+                <Switch
+                  value={isDarkMode}
+                  onValueChange={handleDarkModeChange}
+                  thumbColor={isDarkMode ? '#99f6e4' : '#ffffff'}
+                  trackColor={{ false: '#cbd5e1', true: '#0f766e' }}
+                />
+              </View>
+
               {profileRows.map((item) => (
-                <View style={styles.infoRow} key={item.label}>
-                  <Text style={styles.infoLabel}>{item.label}</Text>
-                  <Text style={styles.infoValue}>{item.value}</Text>
+                <View style={[styles.infoRow, { borderBottomColor: theme.line }]} key={item.label}>
+                  <Text style={[styles.infoLabel, { color: theme.labelText }]}>{item.label}</Text>
+                  <Text style={[styles.infoValue, { color: theme.strongText }]}>{item.value}</Text>
                 </View>
               ))}
             </View>
@@ -293,14 +317,18 @@ const ProfileScreen = () => {
                 },
               ]}
             >
-              <View style={styles.modalCard}>
-                <Text style={styles.modalTitle}>Change Password</Text>
+              <View style={[styles.modalCard, { backgroundColor: theme.modalBg, borderColor: theme.line }]}>
+                <Text style={[styles.modalTitle, { color: theme.strongText }]}>Change Password</Text>
 
                 <FormField
                   label="Current Password"
                   value={currentPassword}
                   onChangeText={setCurrentPassword}
                   placeholder="Enter current password"
+                  inputStyle={{ backgroundColor: theme.inputBg, borderColor: theme.inputBorder }}
+                  labelStyle={{ color: theme.labelText }}
+                  inputTextColor={theme.inputText}
+                  inputPlaceholderColor={theme.inputPlaceholder}
                   secureTextEntry
                 />
                 <FormField
@@ -308,6 +336,10 @@ const ProfileScreen = () => {
                   value={newPassword}
                   onChangeText={setNewPassword}
                   placeholder="At least 8 characters"
+                  inputStyle={{ backgroundColor: theme.inputBg, borderColor: theme.inputBorder }}
+                  labelStyle={{ color: theme.labelText }}
+                  inputTextColor={theme.inputText}
+                  inputPlaceholderColor={theme.inputPlaceholder}
                   secureTextEntry
                 />
                 <FormField
@@ -315,16 +347,20 @@ const ProfileScreen = () => {
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   placeholder="Re-enter new password"
+                  inputStyle={{ backgroundColor: theme.inputBg, borderColor: theme.inputBorder }}
+                  labelStyle={{ color: theme.labelText }}
+                  inputTextColor={theme.inputText}
+                  inputPlaceholderColor={theme.inputPlaceholder}
                   secureTextEntry
                 />
 
                 <View style={styles.modalActions}>
                   <Pressable
-                    style={[styles.modalButton, styles.modalCancelButton]}
+                    style={[styles.modalButton, styles.modalCancelButton, { backgroundColor: theme.modalCancelBg }]}
                     onPress={closePasswordModal}
                     disabled={isSubmitting}
                   >
-                    <Text style={[styles.modalButtonText, styles.modalCancelText]}>Cancel</Text>
+                    <Text style={[styles.modalButtonText, styles.modalCancelText, { color: theme.modalCancelText }]}>Cancel</Text>
                   </Pressable>
                   <Pressable
                     style={[styles.modalButton, styles.updateButton, isSubmitting && styles.disabledButton]}
@@ -448,6 +484,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 14,
     width: '100%',
+  },
+  themeToggleHint: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  themeToggleRow: {
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    paddingTop: 12,
+  },
+  themeToggleTextWrap: {
+    flexShrink: 1,
+    paddingRight: 12,
   },
   infoRow: {
     borderBottomColor: '#e2e8f0',

@@ -4,9 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { subscribeToCollection } from '../services/firestoreService'
 import {
   addService,
-  DEFAULT_DENTAL_SERVICES,
   deleteService,
-  getServices,
   updateService,
 } from '../services/serviceService'
 import { useConfirmDialog } from '../hooks/useConfirmDialog'
@@ -30,7 +28,6 @@ const ServicesPage = () => {
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [isSeeding, setIsSeeding] = useState(false)
   const [message, setMessage] = useState('')
   const [loadError, setLoadError] = useState('')
 
@@ -170,49 +167,10 @@ const ServicesPage = () => {
     }
   }
 
-  const handleSeedDefaults = async () => {
-    const confirmed = await confirm({
-      title: 'Load Default Services',
-      message: 'Add missing default dental services to your catalog?',
-      confirmText: 'Load',
-      tone: 'primary',
-    })
-
-    if (!confirmed) {
-      return
-    }
-
-    setIsSeeding(true)
-    setMessage('')
-
-    try {
-      const existingServices = await getServices()
-      const existingNames = new Set(
-        existingServices.map((item) => String(item.name || '').trim().toLowerCase()),
-      )
-
-      const missingServices = DEFAULT_DENTAL_SERVICES.filter(
-        (item) => !existingNames.has(String(item.name || '').trim().toLowerCase()),
-      )
-
-      if (!missingServices.length) {
-        setMessage('All default services are already in your catalog.')
-        return
-      }
-
-      await Promise.all(missingServices.map((service) => addService(user, service)))
-      setMessage(`Added ${missingServices.length} default service(s).`)
-    } catch (error) {
-      setMessage(error.message || 'Unable to load default services right now.')
-    } finally {
-      setIsSeeding(false)
-    }
-  }
-
   return (
     <>
-      <section className="grid gap-6 xl:grid-cols-[360px_1fr]">
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="grid items-start gap-6 xl:grid-cols-[360px_1fr]">
+        <article className="self-start rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">Service Form</h3>
           <p className="mt-1 text-sm text-slate-500">
             Add, update, and manage dental services with prices.
@@ -247,15 +205,6 @@ const ServicesPage = () => {
                 className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
                 {isSaving ? 'Saving...' : submitLabel}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSeedDefaults}
-                disabled={isSeeding || isSaving}
-                className="rounded-xl border border-cyan-300 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSeeding ? 'Loading...' : 'Load Defaults'}
               </button>
 
               {editingId ? (

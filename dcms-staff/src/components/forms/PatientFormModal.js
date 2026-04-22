@@ -1,6 +1,7 @@
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useEffect, useMemo, useState } from 'react'
 import FormField from '../FormField'
+import { useTheme } from '../../hooks/useTheme'
 
 const initialForm = {
   fullName: '',
@@ -18,6 +19,7 @@ const sanitizeName = (value) => String(value || '').replace(/[^A-Za-z .'-]/g, ''
 const sanitizeDigits = (value) => String(value || '').replace(/[^0-9]/g, '')
 
 const PatientFormModal = ({ visible, patient, isSubmitting, onSubmit, onClose }) => {
+  const { colors } = useTheme()
   const [form, setForm] = useState(initialForm)
 
   useEffect(() => {
@@ -78,8 +80,8 @@ const PatientFormModal = ({ visible, patient, isSubmitting, onSubmit, onClose })
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.container}>
-        <Text style={styles.header}>{patient ? 'Update Patient' : 'Create Patient'}</Text>
+      <View style={[styles.container, { backgroundColor: colors.screenBg }]}>
+        <Text style={[styles.header, { color: colors.strongText }]}>{patient ? 'Update Patient' : 'Create Patient'}</Text>
 
         <ScrollView contentContainerStyle={styles.content}>
           <FormField
@@ -99,17 +101,21 @@ const PatientFormModal = ({ visible, patient, isSubmitting, onSubmit, onClose })
             maxLength={3}
           />
 
-          <Text style={styles.label}>Gender</Text>
+          <Text style={[styles.label, { color: colors.labelText }]}>Gender</Text>
           <View style={styles.genderRow}>
             {genderOptions.map((option) => {
               const isActive = form.gender.toLowerCase() === option.toLowerCase()
               return (
                 <Pressable
                   key={option}
-                  style={[styles.chip, isActive && styles.chipActive]}
+                  style={[
+                    styles.chip,
+                    { borderColor: colors.inputBorder, backgroundColor: colors.panelBg },
+                    isActive && styles.chipActive,
+                  ]}
                   onPress={() => updateField('gender', option)}
                 >
-                  <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{option}</Text>
+                  <Text style={[styles.chipText, { color: colors.labelText }, isActive && styles.chipTextActive]}>{option}</Text>
                 </Pressable>
               )
             })}
@@ -133,9 +139,12 @@ const PatientFormModal = ({ visible, patient, isSubmitting, onSubmit, onClose })
           />
         </ScrollView>
 
-        <View style={styles.footer}>
-          <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose}>
-            <Text style={[styles.buttonText, styles.cancelText]}>Cancel</Text>
+        <View style={[styles.footer, { borderTopColor: colors.line, backgroundColor: colors.screenBg }]}>
+          <Pressable
+            style={[styles.button, styles.cancelButton, { backgroundColor: colors.panelBg, borderColor: colors.inputBorder }]}
+            onPress={onClose}
+          >
+            <Text style={[styles.buttonText, styles.cancelText, { color: colors.labelText }]}>Cancel</Text>
           </Pressable>
           <Pressable
             style={[styles.button, styles.saveButton, (!isValid || isSubmitting) && styles.disabled]}
@@ -163,13 +172,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   cancelButton: {
-    backgroundColor: '#e2e8f0',
+    borderWidth: 1,
   },
   cancelText: {
     color: '#1e293b',
   },
   chip: {
-    borderColor: '#cbd5e1',
     borderRadius: 999,
     borderWidth: 1,
     marginBottom: 10,
@@ -190,7 +198,6 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   container: {
-    backgroundColor: '#f8fafc',
     flex: 1,
     paddingTop: 58,
   },
@@ -202,7 +209,6 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   footer: {
-    borderTopColor: '#e2e8f0',
     borderTopWidth: 1,
     flexDirection: 'row',
     gap: 10,

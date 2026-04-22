@@ -6,6 +6,7 @@ import LoadingOverlay from '../../components/LoadingOverlay'
 import { useAuth } from '../../hooks/useAuth'
 import { getAppointmentsByDentist } from '../../services/appointmentService'
 import { getPatients } from '../../services/patientService'
+import { useTheme } from '../../hooks/useTheme'
 
 const getAppointmentServiceList = (appointment) => {
   if (Array.isArray(appointment?.services) && appointment.services.length) {
@@ -21,6 +22,7 @@ const getAppointmentServiceList = (appointment) => {
 const DentistAppointmentsScreen = () => {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
+  const { colors } = useTheme()
   const [appointments, setAppointments] = useState([])
   const [patients, setPatients] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -121,16 +123,19 @@ const DentistAppointmentsScreen = () => {
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+    <View style={[styles.screen, { backgroundColor: colors.screenBg, paddingTop: insets.top }]}>
+      {error ? <Text style={[styles.error, { backgroundColor: colors.dangerBg, color: colors.dangerText }]}>{error}</Text> : null}
 
       <View style={styles.controlsWrap}>
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search patient, service, date, status"
-          placeholderTextColor="#94a3b8"
-          style={styles.searchInput}
+          placeholderTextColor={colors.inputPlaceholder}
+          style={[
+            styles.searchInput,
+            { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.inputText },
+          ]}
         />
         <View style={styles.filterRow}>
           {statusOptions.map((status) => {
@@ -138,10 +143,14 @@ const DentistAppointmentsScreen = () => {
             return (
               <Pressable
                 key={status}
-                style={[styles.filterChip, isActive && styles.filterChipActive]}
+                style={[
+                  styles.filterChip,
+                  { borderColor: colors.inputBorder, backgroundColor: colors.panelBg },
+                  isActive && styles.filterChipActive,
+                ]}
                 onPress={() => setStatusFilter(status)}
               >
-                <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.labelText }, isActive && styles.filterChipTextActive]}>
                   {status === 'all' ? 'All' : status}
                 </Text>
               </Pressable>
@@ -159,17 +168,17 @@ const DentistAppointmentsScreen = () => {
           filteredAppointments.length === 0 && styles.emptyListContent,
         ]}
         ListEmptyComponent={
-          <Text style={styles.empty}>
+          <Text style={[styles.empty, { color: colors.mutedText }]}>
             {hasActiveFilters ? 'No appointments match your search or filter.' : 'No appointments assigned.'}
           </Text>
         }
         renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.name}>{patientLookup.get(item.patientId) || 'Unknown patient'}</Text>
-            <Text style={styles.detail}>Date: {item.date} at {item.time}</Text>
-            <Text style={styles.detail}>Status: {item.status || 'pending'}</Text>
-            <Text style={styles.detail}>Services: {getAppointmentServiceList(item)}</Text>
-            <Text style={styles.detail}>Total: {formatPeso(item.totalPrice ?? item.price ?? item.fee)}</Text>
+          <View style={[styles.card, { backgroundColor: colors.panelBg, borderColor: colors.line }]}>
+            <Text style={[styles.name, { color: colors.strongText }]}>{patientLookup.get(item.patientId) || 'Unknown patient'}</Text>
+            <Text style={[styles.detail, { color: colors.labelText }]}>Date: {item.date} at {item.time}</Text>
+            <Text style={[styles.detail, { color: colors.labelText }]}>Status: {item.status || 'pending'}</Text>
+            <Text style={[styles.detail, { color: colors.labelText }]}>Services: {getAppointmentServiceList(item)}</Text>
+            <Text style={[styles.detail, { color: colors.labelText }]}>Total: {formatPeso(item.totalPrice ?? item.price ?? item.fee)}</Text>
           </View>
         )}
       />

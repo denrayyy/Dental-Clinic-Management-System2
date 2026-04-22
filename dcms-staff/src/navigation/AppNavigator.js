@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../hooks/useTheme'
 import LoginScreen from '../screens/LoginScreen'
 import DashboardScreen from '../screens/DashboardScreen'
 import PatientsScreen from '../screens/PatientsScreen'
@@ -19,19 +20,27 @@ const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
 
 const LoadingScreen = () => {
+  const { colors } = useTheme()
+
 	return (
-		<View style={styles.loadingScreen}>
+		<View style={[styles.loadingScreen, { backgroundColor: colors.screenBg }]}>
 			<ActivityIndicator size="large" color="#0f766e" />
 		</View>
 	)
 }
 
 const StaffTabs = () => {
+	const { colors } = useTheme()
+
 	return (
 		<Tab.Navigator
 			screenOptions={({ route }) => ({
 				tabBarActiveTintColor: '#0f766e',
-				tabBarInactiveTintColor: '#64748b',
+				tabBarInactiveTintColor: colors.tabInactive,
+				tabBarStyle: {
+					backgroundColor: colors.panelBg,
+					borderTopColor: colors.line,
+				},
 				tabBarLabelStyle: styles.tabLabel,
 				headerShown: false,
 				tabBarIcon: ({ color, size }) => {
@@ -60,11 +69,17 @@ const StaffTabs = () => {
 }
 
 const DentistTabs = () => {
+	const { colors } = useTheme()
+
 	return (
 		<Tab.Navigator
 			screenOptions={({ route }) => ({
 				tabBarActiveTintColor: '#0f766e',
-				tabBarInactiveTintColor: '#64748b',
+				tabBarInactiveTintColor: colors.tabInactive,
+				tabBarStyle: {
+					backgroundColor: colors.panelBg,
+					borderTopColor: colors.line,
+				},
 				tabBarLabelStyle: styles.tabLabel,
 				headerShown: false,
 				tabBarIcon: ({ color, size }) => {
@@ -94,6 +109,7 @@ const DentistTabs = () => {
 
 const AppNavigator = () => {
 	const { isAuthenticated, isLoading, profile, requiresTermsAcceptance } = useAuth()
+	const { navigationTheme } = useTheme()
 	const role = profile?.role || 'staff'
 
 	if (isLoading) {
@@ -101,7 +117,7 @@ const AppNavigator = () => {
 	}
 
 	return (
-		<NavigationContainer>
+		<NavigationContainer theme={navigationTheme}>
 			<Stack.Navigator screenOptions={{ headerShown: false }}>
 				{isAuthenticated ? (
 					requiresTermsAcceptance ? (
@@ -127,7 +143,6 @@ const AppNavigator = () => {
 const styles = StyleSheet.create({
 	loadingScreen: {
 		alignItems: 'center',
-		backgroundColor: '#f8fafc',
 		flex: 1,
 		justifyContent: 'center',
 	},

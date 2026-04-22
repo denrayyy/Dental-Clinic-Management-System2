@@ -23,6 +23,7 @@ import {
 } from '../services/patientService'
 import { useAuth } from '../hooks/useAuth'
 import { addAuditLog } from '../services/logService'
+import { useTheme } from '../hooks/useTheme'
 
 const formatUtcDateTime = (value) => {
   if (!value) {
@@ -41,6 +42,7 @@ const formatUtcDateTime = (value) => {
 const PatientsScreen = () => {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
+  const { colors } = useTheme()
   const [patients, setPatients] = useState([])
   const [search, setSearch] = useState('')
   const [genderFilter, setGenderFilter] = useState('all')
@@ -145,9 +147,9 @@ const PatientsScreen = () => {
 
   const renderItem = ({ item }) => {
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.panelBg, borderColor: colors.line }]}>
         <View style={styles.cardHeader}>
-          <Text style={styles.name}>{item.fullName}</Text>
+          <Text style={[styles.name, { color: colors.strongText }]}>{item.fullName}</Text>
           <View style={styles.actions}>
             <Pressable
               style={styles.iconButton}
@@ -164,11 +166,11 @@ const PatientsScreen = () => {
           </View>
         </View>
 
-        <Text style={styles.detail}>Age: {item.age}</Text>
-        <Text style={styles.detail}>Gender: {item.gender}</Text>
-        <Text style={styles.detail}>Contact: {item.contact}</Text>
-        <Text style={styles.detail}>Address: {item.address}</Text>
-        <Text style={styles.detail}>Created: {formatUtcDateTime(item.createdAt)}</Text>
+        <Text style={[styles.detail, { color: colors.labelText }]}>Age: {item.age}</Text>
+        <Text style={[styles.detail, { color: colors.labelText }]}>Gender: {item.gender}</Text>
+        <Text style={[styles.detail, { color: colors.labelText }]}>Contact: {item.contact}</Text>
+        <Text style={[styles.detail, { color: colors.labelText }]}>Address: {item.address}</Text>
+        <Text style={[styles.detail, { color: colors.labelText }]}>Created: {formatUtcDateTime(item.createdAt)}</Text>
       </View>
     )
   }
@@ -178,7 +180,7 @@ const PatientsScreen = () => {
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}> 
+    <View style={[styles.screen, { backgroundColor: colors.screenBg, paddingTop: insets.top }]}> 
       <View style={styles.searchWrap}>
         <FormField
           label="Search patient"
@@ -194,10 +196,14 @@ const PatientsScreen = () => {
             return (
               <Pressable
                 key={filter}
-                style={[styles.filterChip, isActive && styles.filterChipActive]}
+                style={[
+                  styles.filterChip,
+                  { borderColor: colors.inputBorder, backgroundColor: colors.panelBg },
+                  isActive && styles.filterChipActive,
+                ]}
                 onPress={() => setGenderFilter(filter)}
               >
-                <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                <Text style={[styles.filterChipText, { color: colors.labelText }, isActive && styles.filterChipTextActive]}>
                   {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}
                 </Text>
               </Pressable>
@@ -206,7 +212,7 @@ const PatientsScreen = () => {
         </View>
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { backgroundColor: colors.dangerBg, color: colors.dangerText }]}>{error}</Text> : null}
 
       <FlatList
         data={filteredPatients}
@@ -214,7 +220,7 @@ const PatientsScreen = () => {
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={<Text style={styles.empty}>No patients found.</Text>}
+        ListEmptyComponent={<Text style={[styles.empty, { color: colors.mutedText }]}>No patients found.</Text>}
       />
 
       <Pressable

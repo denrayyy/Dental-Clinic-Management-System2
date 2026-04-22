@@ -1,8 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import {
+  confirmPasswordReset,
+  fetchSignInMethodsForEmail,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  verifyPasswordResetCode,
 } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -152,6 +156,27 @@ export const AuthProvider = ({ children }) => {
     await signOut(auth)
   }
 
+  const forgotPassword = async (email) => {
+    const normalizedEmail = email.trim()
+    const methods = await fetchSignInMethodsForEmail(auth, normalizedEmail)
+
+    if (methods.length > 0 && !methods.includes('password')) {
+      const error = new Error('No account found for this email.')
+      error.code = 'auth/user-not-found'
+      throw error
+    }
+
+    await sendPasswordResetEmail(auth, normalizedEmail)
+  }
+
+  const verifyResetCode = async (code) => {
+    await verifyPasswordResetCode(auth, code)
+  }
+
+  const completePasswordReset = async (code, nextPassword) => {
+    await confirmPasswordReset(auth, code, nextPassword)
+  }
+
   const acceptTermsAndContinue = async () => {
     const currentUser = auth.currentUser
 
@@ -192,10 +217,24 @@ export const AuthProvider = ({ children }) => {
       requiresTermsAcceptance: Boolean(user && profile?.isFirstLogin),
       isAcceptingTerms,
       login,
+      forgotPassword,
+      verifyResetCode,
+      completePasswordReset,
       logout,
       acceptTermsAndContinue,
     }),
-    [acceptTermsAndContinue, isAcceptingTerms, isLoading, profile, user],
+    [
+      acceptTermsAndContinue,
+      completePasswordReset,
+      forgotPassword,
+      isAcceptingTerms,
+      isLoading,
+      login,
+      logout,
+      profile,
+      verifyResetCode,
+      user,
+    ],
   )
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>

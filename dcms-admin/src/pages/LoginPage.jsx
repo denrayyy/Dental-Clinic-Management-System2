@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../firebase/config'
@@ -72,6 +73,14 @@ const LoginPage = () => {
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-cyan-300 transition focus:border-cyan-500 focus:ring"
               placeholder="********"
             />
+            <div className="mt-2 flex justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-xs font-medium text-cyan-700 underline-offset-2 transition hover:text-cyan-900 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
           </div>
 
           {error ? (

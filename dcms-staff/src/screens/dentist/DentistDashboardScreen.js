@@ -6,6 +6,7 @@ import LoadingOverlay from '../../components/LoadingOverlay'
 import { useAuth } from '../../hooks/useAuth'
 import { getAppointmentsByDentist } from '../../services/appointmentService'
 import { getPatientsByIds } from '../../services/patientService'
+import { useTheme } from '../../hooks/useTheme'
 
 const getStatusStyles = (status) => {
   const normalized = String(status || 'pending').toLowerCase()
@@ -33,6 +34,7 @@ const getStatusStyles = (status) => {
 const DentistDashboardScreen = () => {
   const insets = useSafeAreaInsets()
   const { user, profile } = useAuth()
+  const { colors } = useTheme()
   const [appointments, setAppointments] = useState([])
   const [patientsCount, setPatientsCount] = useState(0)
   const [patientLookup, setPatientLookup] = useState(new Map())
@@ -104,7 +106,7 @@ const DentistDashboardScreen = () => {
 
   return (
     <ScrollView
-      style={[styles.screen, { paddingTop: insets.top }]}
+      style={[styles.screen, { backgroundColor: colors.screenBg, paddingTop: insets.top }]}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       showsVerticalScrollIndicator={false}
@@ -130,27 +132,30 @@ const DentistDashboardScreen = () => {
       </View>
 
       <View style={styles.quickStatsRow}>
-        <View style={styles.quickStatCard}>
-          <Text style={styles.quickStatLabel}>Pending</Text>
-          <Text style={styles.quickStatValue}>{pendingCount}</Text>
+        <View style={[styles.quickStatCard, { backgroundColor: colors.panelBg, borderColor: colors.line }]}>
+          <Text style={[styles.quickStatLabel, { color: colors.mutedText }]}>Pending</Text>
+          <Text style={[styles.quickStatValue, { color: colors.strongText }]}>{pendingCount}</Text>
         </View>
-        <View style={styles.quickStatCard}>
-          <Text style={styles.quickStatLabel}>Completed</Text>
-          <Text style={styles.quickStatValue}>{completedCount}</Text>
+        <View style={[styles.quickStatCard, { backgroundColor: colors.panelBg, borderColor: colors.line }]}>
+          <Text style={[styles.quickStatLabel, { color: colors.mutedText }]}>Completed</Text>
+          <Text style={[styles.quickStatValue, { color: colors.strongText }]}>{completedCount}</Text>
         </View>
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { backgroundColor: colors.dangerBg, color: colors.dangerText }]}>{error}</Text> : null}
 
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
+      <View style={[styles.sectionCard, { backgroundColor: colors.panelBg, borderColor: colors.line }]}>
+        <Text style={[styles.sectionTitle, { color: colors.strongText }]}>Upcoming Appointments</Text>
         {!upcoming.length ? (
           <Text style={styles.empty}>No upcoming appointments assigned.</Text>
         ) : (
           upcoming.map((appointment) => (
-            <View key={appointment.id} style={styles.appointmentCard}>
+            <View
+              key={appointment.id}
+              style={[styles.appointmentCard, { backgroundColor: colors.sectionBg, borderColor: colors.line }]}
+            >
               <View style={styles.appointmentTopRow}>
-                <Text style={styles.appointmentDate}>{appointment.date} at {appointment.time}</Text>
+                <Text style={[styles.appointmentDate, { color: colors.strongText }]}>{appointment.date} at {appointment.time}</Text>
                 <View
                   style={[
                     styles.statusBadge,
@@ -167,7 +172,7 @@ const DentistDashboardScreen = () => {
                   </Text>
                 </View>
               </View>
-              <Text style={styles.appointmentDetail}>
+              <Text style={[styles.appointmentDetail, { color: colors.labelText }]}> 
                 Patient: {patientLookup.get(appointment.patientId) || 'Unknown patient'}
               </Text>
             </View>
@@ -212,15 +217,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   error: {
-    backgroundColor: '#fee2e2',
     borderRadius: 10,
-    color: '#b91c1c',
     fontSize: 13,
     marginTop: 12,
     padding: 10,
   },
   screen: {
-    backgroundColor: '#f8fafc',
     flex: 1,
   },
   heroCard: {
@@ -291,12 +293,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   quickStatLabel: {
-    color: '#64748b',
     fontSize: 12,
     fontWeight: '700',
   },
   quickStatValue: {
-    color: '#0f172a',
     fontSize: 22,
     fontWeight: '800',
     marginTop: 4,
@@ -310,7 +310,6 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   sectionTitle: {
-    color: '#0f172a',
     fontSize: 16,
     fontWeight: '800',
   },

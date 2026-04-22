@@ -1,12 +1,31 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native'
+import { useTheme } from '../hooks/useTheme'
 
-const FormField = ({ label, ...props }) => {
+const FormField = ({
+  label,
+  inputStyle,
+  labelStyle,
+  inputTextColor,
+  inputPlaceholderColor,
+  ...props
+}) => {
+  const { colors } = useTheme()
+
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, { color: colors.labelText }, labelStyle]}>{label}</Text>
       <TextInput
-        placeholderTextColor="#94a3b8"
-        style={styles.input}
+        placeholderTextColor={inputPlaceholderColor || colors.inputPlaceholder}
+        style={[
+          styles.input,
+          {
+            backgroundColor: colors.inputBg,
+            borderColor: colors.inputBorder,
+            color: colors.inputText,
+          },
+          inputStyle,
+          inputTextColor ? { color: inputTextColor } : null,
+        ]}
         {...props}
       />
     </View>
@@ -15,17 +34,13 @@ const FormField = ({ label, ...props }) => {
 
 const styles = StyleSheet.create({
   input: {
-    backgroundColor: '#fff',
-    borderColor: '#cbd5e1',
     borderRadius: 10,
     borderWidth: 1,
-    color: '#0f172a',
     fontSize: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   label: {
-    color: '#334155',
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 6,

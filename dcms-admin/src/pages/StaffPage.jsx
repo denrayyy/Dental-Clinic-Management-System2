@@ -6,7 +6,6 @@ import {
   createStaffWithAuthAndProfile,
   deactivateStaff,
   deleteStaffProfile,
-  resetAccountPassword,
   updateStaffProfile,
 } from '../services/staffService'
 import { useConfirmDialog } from '../hooks/useConfirmDialog'
@@ -103,7 +102,6 @@ const StaffPage = () => {
       if (editingId) {
         await updateStaffProfile(user, editingId, {
           name: form.name,
-          email: form.email,
           role: form.role,
         })
         setMessage('Record updated successfully.')
@@ -186,26 +184,6 @@ const StaffPage = () => {
     await deleteStaffProfile(user, staffId)
   }
 
-  const handleResetPassword = async (record) => {
-    const confirmed = await confirm({
-      title: 'Reset Password',
-      message: `Send password reset email to ${record.email || 'this account'}?`,
-      confirmText: 'Send Reset Link',
-      tone: 'warning',
-    })
-
-    if (!confirmed) {
-      return
-    }
-
-    try {
-      await resetAccountPassword(user, record.email)
-      setMessage(`Password reset email sent to ${record.email}.`)
-    } catch (error) {
-      setMessage(error.message || 'Unable to send password reset email.')
-    }
-  }
-
   return (
     <>
       <section className="grid gap-6 xl:grid-cols-[360px_1fr]">
@@ -231,9 +209,16 @@ const StaffPage = () => {
               value={form.email}
               onChange={handleChange}
               required
+              disabled={Boolean(editingId)}
               placeholder="Email address"
-              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-cyan-300 focus:border-cyan-500 focus:ring"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-cyan-300 focus:border-cyan-500 focus:ring disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
             />
+
+            {editingId ? (
+              <p className="text-xs text-slate-500">
+                Email cannot be changed here to avoid authentication mismatch.
+              </p>
+            ) : null}
 
             {!editingId ? (
               <input
@@ -345,15 +330,6 @@ const StaffPage = () => {
                           Activate
                         </button>
                       )}
-
-                      <button
-                        type="button"
-                        onClick={() => handleResetPassword(record)}
-                        className="rounded-lg bg-indigo-600 px-3 py-1.5 font-semibold text-white hover:bg-indigo-700 whitespace-nowrap"
-                        title="Reset Password"
-                      >
-                        Reset
-                      </button>
 
                       <button
                         type="button"

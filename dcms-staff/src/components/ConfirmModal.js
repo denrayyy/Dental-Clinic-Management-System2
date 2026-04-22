@@ -1,4 +1,5 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTheme } from '../hooks/useTheme'
 
 const ConfirmModal = ({
   visible,
@@ -9,16 +10,21 @@ const ConfirmModal = ({
   onConfirm,
   onCancel,
 }) => {
+  const { colors } = useTheme()
+
   return (
     <Modal animationType="fade" transparent visible={visible} onRequestClose={onCancel}>
       <View style={styles.backdrop}>
-        <View style={styles.modal}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
+        <View style={[styles.modal, { backgroundColor: colors.modalBg, borderColor: colors.line }]}> 
+          <Text style={[styles.title, { color: colors.strongText }]}>{title}</Text>
+          <Text style={[styles.message, { color: colors.labelText }]}>{message}</Text>
 
           <View style={styles.actions}>
-            <Pressable style={[styles.button, styles.cancelButton]} onPress={onCancel}>
-              <Text style={[styles.buttonText, styles.cancelText]}>{cancelLabel}</Text>
+            <Pressable
+              style={[styles.button, styles.cancelButton, { backgroundColor: colors.modalCancelBg }]}
+              onPress={onCancel}
+            >
+              <Text style={[styles.buttonText, styles.cancelText, { color: colors.modalCancelText }]}>{cancelLabel}</Text>
             </Pressable>
             <Pressable style={[styles.button, styles.confirmButton]} onPress={onConfirm}>
               <Text style={[styles.buttonText, styles.confirmText]}>{confirmLabel}</Text>
@@ -66,19 +72,17 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   message: {
-    color: '#475569',
     fontSize: 14,
     lineHeight: 20,
     marginTop: 8,
   },
   modal: {
-    backgroundColor: '#fff',
+    borderWidth: 1,
     borderRadius: 16,
     padding: 20,
     width: '100%',
   },
   title: {
-    color: '#0f172a',
     fontSize: 18,
     fontWeight: '800',
   },
