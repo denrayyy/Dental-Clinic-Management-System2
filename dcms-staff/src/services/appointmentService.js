@@ -88,9 +88,12 @@ export const createAppointment = async (payload) => {
   const resolvedTotal = Number.isFinite(totalPrice) && totalPrice >= 0
     ? totalPrice
     : sumServicesTotal(services)
+  const createdBy = String(payload.createdBy || '').trim() || 'staff'
+  const patientName = String(payload.patientName || '').trim()
 
   const cleanPayload = {
     patientId: payload.patientId,
+    patientName,
     date: payload.date,
     time: payload.time,
     status: payload.status || 'pending',
@@ -99,6 +102,7 @@ export const createAppointment = async (payload) => {
     dentistId: (payload.dentistId || '').trim(),
     dentistName,
     dentist: dentistName,
+    createdBy,
     createdAt: serverTimestamp(),
   }
 
@@ -140,9 +144,11 @@ export const updateAppointment = async (id, payload) => {
   const resolvedTotal = Number.isFinite(totalPrice) && totalPrice >= 0
     ? totalPrice
     : sumServicesTotal(services)
+  const patientName = String(payload.patientName || '').trim()
 
   await updateDoc(appointmentRef, {
     patientId: payload.patientId,
+    patientName,
     date: payload.date,
     time: payload.time,
     status: payload.status || 'pending',

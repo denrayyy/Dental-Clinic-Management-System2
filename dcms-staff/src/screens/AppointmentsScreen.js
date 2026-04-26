@@ -28,6 +28,7 @@ import { getActiveDentists } from '../services/staffDirectoryService'
 import { useAuth } from '../hooks/useAuth'
 import { addAuditLog } from '../services/logService'
 import { useTheme } from '../hooks/useTheme'
+import { fetchPhilippineHolidays } from '../services/calendarificService'
 
 const statusOptions = ['all', 'pending', 'completed', 'cancelled']
 
@@ -82,6 +83,9 @@ const AppointmentsScreen = () => {
   const [amountInput, setAmountInput] = useState('')
   const [completingAppointment, setCompletingAppointment] = useState(null)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [holidayDates, setHolidayDates] = useState([])
+  const [isHolidayLoading, setIsHolidayLoading] = useState(true)
+  const [holidayError, setHolidayError] = useState('')
 
   const formatPeso = (value) => {
     return new Intl.NumberFormat('en-PH', {
@@ -101,24 +105,33 @@ const AppointmentsScreen = () => {
 
   const loadData = useCallback(async () => {
     setError('')
+    setHolidayError('')
+    setIsHolidayLoading(true)
 
     try {
-      const [appointmentsResult, patientsResult, dentistsResult, servicesResult] = await Promise.allSettled([
+      const [appointmentsResult, patientsResult, dentistsResult, servicesResult, holidaysResult] = await Promise.allSettled([
         getAppointments(),
         getPatients(),
         getActiveDentists(),
         fetchServices(),
+        fetchPhilippineHolidays({ year: 2026 }),
       ])
 
       const appointmentsData = appointmentsResult.status === 'fulfilled' ? appointmentsResult.value : []
       const patientsData = patientsResult.status === 'fulfilled' ? patientsResult.value : []
       const dentistsData = dentistsResult.status === 'fulfilled' ? dentistsResult.value : []
       const servicesData = servicesResult.status === 'fulfilled' ? servicesResult.value : []
+      const holidaysData = holidaysResult.status === 'fulfilled' ? holidaysResult.value : []
 
       setAppointments(appointmentsData)
       setPatients(patientsData)
       setDentists(dentistsData)
       setServices(servicesData)
+      setHolidayDates(holidaysData)
+
+      if (holidaysResult.status === 'rejected') {
+        setHolidayError('Unable to load holiday calendar. Please check Calendarific API key.')
+      }
 
       if (
         appointmentsResult.status === 'rejected' ||
@@ -130,9 +143,11 @@ const AppointmentsScreen = () => {
       }
     } catch {
       setError('Unable to load appointments. Pull to refresh and try again.')
+      setHolidayError('Unable to load holiday calendar. Please check Calendarific API key.')
     } finally {
       setIsLoading(false)
       setRefreshing(false)
+      setIsHolidayLoading(false)
     }
   }, [])
 
@@ -159,6 +174,7 @@ const AppointmentsScreen = () => {
 
   const handleSave = async (form) => {
     setIsSubmitting(true)
+    const patientName = String(patientLookup.get(form.patientId) || '').trim()
 
     try {
       if (!form.dentistId) {
@@ -182,6 +198,7 @@ const AppointmentsScreen = () => {
 
         await updateAppointment(editingAppointment.id, {
           ...form,
+          patientName,
           status: editingAppointment.status || 'pending',
           totalPrice: Number(form.totalPrice) || 0,
         })
@@ -192,7 +209,11 @@ const AppointmentsScreen = () => {
           `${editingAppointment.id} - ${form.date} ${form.time}`,
         )
       } else {
-        const createdId = await createAppointment(form)
+        const createdId = await createAppointment({
+          ...form,
+          patientName,
+          createdBy: user?.uid || 'staff',
+        })
         await addAuditLog(
           user?.uid || 'staff',
           'create',
@@ -245,6 +266,7 @@ const AppointmentsScreen = () => {
     try {
       await updateAppointment(appointment.id, {
         patientId: appointment.patientId,
+        patientName: appointment.patientName || patientLookup.get(appointment.patientId) || '',
         date: appointment.date,
         time: appointment.time,
         status,
@@ -428,6 +450,7 @@ const AppointmentsScreen = () => {
       </View>
 
       {error ? <Text style={[styles.error, { backgroundColor: colors.dangerBg, color: colors.dangerText }]}>{error}</Text> : null}
+      {holidayError ? <Text style={[styles.error, { backgroundColor: '#fff7ed', color: '#b45309' }]}>{holidayError}</Text> : null}
 
       <FlatList
         data={filteredAppointments}
@@ -454,6 +477,9 @@ const AppointmentsScreen = () => {
         patients={patients}
         dentists={dentists}
         services={services}
+        holidayDates={holidayDates}
+        isHolidayLoading={isHolidayLoading}
+        holidayError={holidayError}
         isSubmitting={isSubmitting}
         onClose={() => {
           setIsFormVisible(false)

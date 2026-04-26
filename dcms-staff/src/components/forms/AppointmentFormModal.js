@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
-import FormField from '../FormField'
+import { Calendar } from 'react-native-calendars'
 import { useTheme } from '../../hooks/useTheme'
 
 const initialForm = {
@@ -52,57 +52,24 @@ const resolveSelectedServices = (appointment) => {
   return fallback ? [fallback] : []
 }
 
-const formatDateInput = (value) => {
-  const digits = String(value || '').replace(/[^0-9]/g, '').slice(0, 8)
-  if (digits.length <= 4) {
-    return digits
-  }
-  if (digits.length <= 6) {
-    return `${digits.slice(0, 4)}-${digits.slice(4)}`
-  }
-  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`
-}
-
-const formatTimeInput = (value) => {
-  const digits = String(value || '').replace(/[^0-9]/g, '').slice(0, 4)
-  if (digits.length <= 2) {
-    return digits
-  }
-  return `${digits.slice(0, 2)}:${digits.slice(2)}`
-}
-
-const isValidDate = (value) => {
-  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (!match) {
-    return false
-  }
-
-  const year = Number(match[1])
-  const month = Number(match[2])
-  const day = Number(match[3])
-
-  if (year < 2000 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
-    return false
-  }
-
-  const date = new Date(Date.UTC(year, month - 1, day))
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
-  )
-}
-
-const isValidTime = (value) => {
-  const match = String(value || '').match(/^(\d{2}):(\d{2})$/)
-  if (!match) {
-    return false
-  }
-
-  const hour = Number(match[1])
-  const minute = Number(match[2])
-  return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59
-}
+const appointmentTimeOptions = [
+  '08:00',
+  '08:30',
+  '09:00',
+  '09:30',
+  '10:00',
+  '10:30',
+  '11:00',
+  '11:30',
+  '13:00',
+  '13:30',
+  '14:00',
+  '14:30',
+  '15:00',
+  '15:30',
+  '16:00',
+  '16:30',
+]
 
 const AppointmentFormModal = ({
   visible,
@@ -110,6 +77,9 @@ const AppointmentFormModal = ({
   patients,
   dentists = [],
   services = [],
+  holidayDates = [],
+  isHolidayLoading = false,
+  holidayError = '',
   isSubmitting,
   onSubmit,
   onClose,
@@ -119,6 +89,8 @@ const AppointmentFormModal = ({
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false)
   const [patientSearch, setPatientSearch] = useState('')
   const [isDentistDropdownOpen, setIsDentistDropdownOpen] = useState(false)
+  const [isTimeDropdownOpen, setIsTimeDropdownOpen] = useState(false)
+  const [holidayNotice, setHolidayNotice] = useState('')
 
   const formatPeso = (value) => {
     return new Intl.NumberFormat('en-PH', {
@@ -167,6 +139,8 @@ const AppointmentFormModal = ({
       setPatientSearch('')
       setIsPatientDropdownOpen(false)
       setIsDentistDropdownOpen(false)
+      setIsTimeDropdownOpen(false)
+      setHolidayNotice('')
       return
     }
 
@@ -174,7 +148,33 @@ const AppointmentFormModal = ({
     setPatientSearch('')
     setIsPatientDropdownOpen(false)
     setIsDentistDropdownOpen(false)
+    setIsTimeDropdownOpen(false)
+    setHolidayNotice('')
   }, [appointment, visible])
+
+  const holidayDateSet = useMemo(() => new Set(holidayDates), [holidayDates])
+
+  const calendarMarkedDates = useMemo(() => {
+    const marks = {}
+
+    // Public holidays are shown with a red dot so staff can avoid closed dates.
+    holidayDates.forEach((dateString) => {
+      marks[dateString] = {
+        marked: true,
+        dotColor: '#b91c1c',
+      }
+    })
+
+    if (form.date) {
+      marks[form.date] = {
+        ...(marks[form.date] || {}),
+        selected: true,
+        selectedColor: '#0f766e',
+      }
+    }
+
+    return marks
+  }, [form.date, holidayDates])
 
   const selectedServiceIds = useMemo(
     () => new Set(form.services.map((service) => service.serviceId)),
@@ -184,12 +184,13 @@ const AppointmentFormModal = ({
   const isValid = useMemo(() => {
     return (
       form.patientId &&
-      isValidDate(form.date) &&
-      isValidTime(form.time) &&
+      form.date &&
+      form.time &&
+      !holidayDateSet.has(form.date) &&
       form.dentistId.trim().length > 0 &&
       form.services.length > 0
     )
-  }, [form])
+  }, [form, holidayDateSet])
 
   const updateField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -199,10 +200,12 @@ const AppointmentFormModal = ({
     if (!isValid || isSubmitting) {
       if (!form.patientId) {
         Alert.alert('Missing patient', 'Please select a patient.')
-      } else if (!isValidDate(form.date)) {
-        Alert.alert('Invalid date', 'Please enter date in YYYY-MM-DD format.')
-      } else if (!isValidTime(form.time)) {
-        Alert.alert('Invalid time', 'Please enter time in HH:MM (24-hour) format.')
+      } else if (!form.date) {
+        Alert.alert('Missing date', 'Please select a date from the calendar.')
+      } else if (holidayDateSet.has(form.date)) {
+        Alert.alert('Clinic is closed on this date', 'Please choose a different date.')
+      } else if (!form.time) {
+        Alert.alert('Missing time', 'Please select an appointment time.')
       } else if (!form.dentistId.trim()) {
         Alert.alert('Missing dentist', 'Please assign a dentist before saving.')
       } else if (!form.services.length) {
@@ -224,6 +227,29 @@ const AppointmentFormModal = ({
         },
       ],
     )
+  }
+
+  const handleCalendarDatePress = (day) => {
+    const selectedDate = day?.dateString
+    if (!selectedDate) {
+      return
+    }
+
+    // Block holiday bookings and explain why the date cannot be used.
+    if (holidayDateSet.has(selectedDate)) {
+      setHolidayNotice('Clinic is closed on this date')
+      updateField('date', '')
+      Alert.alert('Clinic is closed on this date', 'Please select a different date.')
+      return
+    }
+
+    setHolidayNotice('')
+    updateField('date', selectedDate)
+  }
+
+  const selectTime = (timeValue) => {
+    updateField('time', timeValue)
+    setIsTimeDropdownOpen(false)
   }
 
   const selectDentist = (dentist) => {
@@ -349,22 +375,73 @@ const AppointmentFormModal = ({
 
           {!patients.length ? <Text style={[styles.helperText, { color: colors.mutedText }]}>No patients found.</Text> : null}
 
-          <FormField
-            label="Date (YYYY-MM-DD)"
-            value={form.date}
-            onChangeText={(text) => updateField('date', formatDateInput(text))}
-            placeholder="2026-03-21"
-            keyboardType="number-pad"
-            maxLength={10}
-          />
-          <FormField
-            label="Time (HH:MM)"
-            value={form.time}
-            onChangeText={(text) => updateField('time', formatTimeInput(text))}
-            placeholder="09:30"
-            keyboardType="number-pad"
-            maxLength={5}
-          />
+          <Text style={[styles.label, { color: colors.labelText }]}>Appointment Date</Text>
+          <View style={[styles.calendarWrap, { backgroundColor: colors.panelBg, borderColor: colors.inputBorder }]}>
+            <Calendar
+              current={form.date || undefined}
+              onDayPress={handleCalendarDatePress}
+              markedDates={calendarMarkedDates}
+              theme={{
+                calendarBackground: colors.panelBg,
+                dayTextColor: colors.inputText,
+                monthTextColor: colors.strongText,
+                selectedDayBackgroundColor: '#0f766e',
+                selectedDayTextColor: '#ffffff',
+                textDisabledColor: colors.mutedText,
+                todayTextColor: '#0f766e',
+                arrowColor: '#0f766e',
+              }}
+            />
+          </View>
+          <Text style={[styles.helperText, { color: colors.mutedText }]}>Red dots are Philippine public holidays from Calendarific.</Text>
+          {isHolidayLoading ? (
+            <Text style={[styles.helperText, { color: colors.mutedText }]}>Loading holiday calendar...</Text>
+          ) : null}
+          {holidayError ? (
+            <Text style={[styles.errorText, { color: '#b91c1c' }]}>{holidayError}</Text>
+          ) : null}
+          {holidayNotice ? (
+            <Text style={[styles.errorText, { color: '#b91c1c' }]}>{holidayNotice}</Text>
+          ) : null}
+          {form.date ? (
+            <Text style={[styles.selectedDateText, { color: colors.strongText }]}>Selected date: {form.date}</Text>
+          ) : null}
+
+          <Text style={[styles.label, { color: colors.labelText }]}>Appointment Time</Text>
+          <Pressable
+            style={[styles.dropdownTrigger, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+            onPress={() => setIsTimeDropdownOpen((prev) => !prev)}
+          >
+            <Text style={[form.time ? styles.dropdownValue : styles.dropdownPlaceholder, { color: form.time ? colors.inputText : colors.inputPlaceholder }]}>
+              {form.time || 'Select time'}
+            </Text>
+            <Text style={[styles.dropdownChevron, { color: colors.mutedText }]}>{isTimeDropdownOpen ? '▲' : '▼'}</Text>
+          </Pressable>
+
+          {isTimeDropdownOpen ? (
+            <View style={[styles.dropdownMenu, { backgroundColor: colors.panelBg, borderColor: colors.inputBorder }]}>
+              <ScrollView nestedScrollEnabled style={styles.timeListScroll}>
+                {appointmentTimeOptions.map((timeValue) => {
+                  const isSelected = form.time === timeValue
+                  return (
+                    <Pressable
+                      key={timeValue}
+                      style={[
+                        styles.dropdownOption,
+                        { borderBottomColor: colors.line },
+                        isSelected && styles.patientChipActive,
+                      ]}
+                      onPress={() => selectTime(timeValue)}
+                    >
+                      <Text style={[styles.dropdownOptionText, { color: colors.labelText }, isSelected && styles.patientTextActive]}>
+                        {timeValue}
+                      </Text>
+                    </Pressable>
+                  )
+                })}
+              </ScrollView>
+            </View>
+          ) : null}
 
           <Text style={[styles.label, { color: colors.labelText }]}>Assign Dentist</Text>
           <Pressable
@@ -534,6 +611,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 58,
   },
+  calendarWrap: {
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
   content: {
     paddingHorizontal: 16,
     paddingVertical: 18,
@@ -596,6 +679,12 @@ const styles = StyleSheet.create({
   helperText: {
     color: '#64748b',
     fontSize: 12,
+    marginBottom: 10,
+    marginTop: -4,
+  },
+  errorText: {
+    fontSize: 12,
+    fontWeight: '700',
     marginBottom: 10,
     marginTop: -4,
   },
@@ -672,8 +761,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     overflow: 'hidden',
   },
+  selectedDateText: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 10,
+    marginTop: -2,
+  },
   serviceListScroll: {
     maxHeight: 170,
+  },
+  timeListScroll: {
+    maxHeight: 180,
   },
   servicePrice: {
     color: '#0f172a',
