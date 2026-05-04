@@ -15,6 +15,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.dentalclinicmanagement.dcmsstaff",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -27,6 +28,11 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ab70baf3-d286-48db-8bc8-d37ad5cd3fb8"
+      }
+    }
   }
 }

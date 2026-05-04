@@ -163,13 +163,15 @@ const AppointmentsScreen = () => {
   }
 
   const filteredAppointments = useMemo(() => {
-    return appointments.filter((appointment) => {
-      const normalizedStatus =
-        appointment.status === 'cancel' ? 'cancelled' : appointment.status
-      const statusMatch = filterStatus === 'all' || normalizedStatus === filterStatus
-      const dateMatch = !filterDate || appointment.date === filterDate
-      return statusMatch && dateMatch
-    })
+    return appointments
+      .filter((appointment) => {
+        const normalizedStatus =
+          appointment.status === 'cancel' ? 'cancelled' : appointment.status
+        const statusMatch = filterStatus === 'all' || normalizedStatus === filterStatus
+        const dateMatch = !filterDate || appointment.date === filterDate
+        return statusMatch && dateMatch
+      })
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   }, [appointments, filterDate, filterStatus])
 
   const handleSave = async (form) => {
@@ -376,6 +378,9 @@ const AppointmentsScreen = () => {
         <Text style={[styles.detail, { color: colors.labelText }]}>Dentist: {item.dentistName || item.dentist || 'Not assigned'}</Text>
         <Text style={[styles.detail, { color: colors.labelText }]}>Services: {getAppointmentServiceList(item)}</Text>
         <Text style={[styles.detail, { color: colors.labelText }]}>Total: {formatPeso(item.totalPrice ?? item.price ?? item.fee)}</Text>
+        {item.progressNote ? (
+          <Text style={[styles.detail, { color: colors.labelText, fontStyle: 'italic' }]}>Note: {item.progressNote}</Text>
+        ) : null}
 
         {isFinalStatus ? (
           <View style={[styles.finalStatusBadge, normalizedStatus === 'completed' ? styles.finalCompleted : styles.finalCancelled]}>

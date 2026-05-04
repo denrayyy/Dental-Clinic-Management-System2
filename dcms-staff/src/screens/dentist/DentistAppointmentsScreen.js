@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from 'react'
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import LoadingOverlay from '../../components/LoadingOverlay'
+import ProgressReportModal from '../../components/ProgressReportModal'
 import { useAuth } from '../../hooks/useAuth'
-import { getAppointmentsByDentist } from '../../services/appointmentService'
+import { getAppointmentsByDentist, updateAppointment } from '../../services/appointmentService'
 import { getPatients } from '../../services/patientService'
 import { useTheme } from '../../hooks/useTheme'
 
@@ -30,6 +32,9 @@ const DentistAppointmentsScreen = () => {
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [isReportModalVisible, setIsReportModalVisible] = useState(false)
+  const [reportingAppointment, setReportingAppointment] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const formatPeso = (value) => {
     return new Intl.NumberFormat('en-PH', {
@@ -47,14 +52,7 @@ const DentistAppointmentsScreen = () => {
     return map
   }, [patients])
 
-  const statusOptions = useMemo(() => {
-    const dynamicStatuses = Array.from(
-      new Set(appointments.map((appointment) => String(appointment.status || 'pending').toLowerCase())),
-    )
-    const baseStatuses = ['all', 'pending']
-
-    return Array.from(new Set([...baseStatuses, ...dynamicStatuses]))
-  }, [appointments])
+  const statusOptions = useMemo(() => ['all', 'pending', 'completed'], [])
 
   const filteredAppointments = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -118,6 +116,25 @@ const DentistAppointmentsScreen = () => {
     loadData()
   }
 
+  const handleSaveReport = async (note) => {
+    if (!reportingAppointment) return
+
+    setIsSubmitting(true)
+    try {
+      await updateAppointment(reportingAppointment.id, {
+        ...reportingAppointment,
+        progressNote: note,
+      })
+      await loadData()
+      setIsReportModalVisible(false)
+      setReportingAppointment(null)
+    } catch (e) {
+      Alert.alert('Save Failed', 'Unable to save the progress report. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   if (isLoading) {
     return <LoadingOverlay label="Loading appointments..." />
   }
@@ -172,16 +189,61 @@ const DentistAppointmentsScreen = () => {
             {hasActiveFilters ? 'No appointments match your search or filter.' : 'No appointments assigned.'}
           </Text>
         }
-        renderItem={({ item }) => (
-          <View style={[styles.card, { backgroundColor: colors.panelBg, borderColor: colors.line }]}>
-            <Text style={[styles.name, { color: colors.strongText }]}>{patientLookup.get(item.patientId) || 'Unknown patient'}</Text>
-            <Text style={[styles.detail, { color: colors.labelText }]}>Date: {item.date} at {item.time}</Text>
-            <Text style={[styles.detail, { color: colors.labelText }]}>Status: {item.status || 'pending'}</Text>
-            <Text style={[styles.detail, { color: colors.labelText }]}>Services: {getAppointmentServiceList(item)}</Text>
-            <Text style={[styles.detail, { color: colors.labelText }]}>Total: {formatPeso(item.totalPrice ?? item.price ?? item.fee)}</Text>
-          </View>
-        )}
+        renderItem={({ item }) => {
+          const normalizedStatus = String(item.status || 'pending').toLowerCase()
+          const isCompleted = normalizedStatus === 'completed'
+          return (
+            <View style={[styles.card, { backgroundColor: colors.panelBg, borderColor: colors.line }]}>
+              <View style={styles.cardHeader}>
+                <Text style={[styles.name, { color: colors.strongText }]}>
+                  {patientLookup.get(item.patientId) || 'Unknown patient'}
+                </Text>
+                <Pressable
+                  style={styles.iconButton}
+                  onPress={() => {
+                    setReportingAppointment(item)
+                    setIsReportModalVisible(true)
+                  }}
+                >
+                  <Ionicons name="document-text-outline" size={18} color="#1d4ed8" />
+                </Pressable>
+              </View>
+              <View style={styles.statusRow}>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    isCompleted ? styles.statusBadgeCompleted : styles.statusBadgePending,
+                  ]}
+                >
+                  <Text style={isCompleted ? styles.statusTextCompleted : styles.statusTextPending}>
+                    {isCompleted ? 'Completed' : 'Pending'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.detail, { color: colors.labelText }]}>Date: {item.date} at {item.time}</Text>
+              <Text style={[styles.detail, { color: colors.labelText }]}>Status: {item.status || 'pending'}</Text>
+              <Text style={[styles.detail, { color: colors.labelText }]}>Services: {getAppointmentServiceList(item)}</Text>
+              <Text style={[styles.detail, { color: colors.labelText }]}>Total: {formatPeso(item.totalPrice ?? item.price ?? item.fee)}</Text>
+              {item.progressNote ? (
+                <Text style={[styles.detail, { color: colors.labelText, fontStyle: 'italic' }]}>Note: {item.progressNote}</Text>
+              ) : null}
+            </View>
+          )
+        }}
       />
+
+      {reportingAppointment ? (
+        <ProgressReportModal
+          visible={isReportModalVisible}
+          appointment={reportingAppointment}
+          isSubmitting={isSubmitting}
+          onClose={() => {
+            setIsReportModalVisible(false)
+            setReportingAppointment(null)
+          }}
+          onSubmit={handleSaveReport}
+        />
+      ) : null}
     </View>
   )
 }
@@ -194,6 +256,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 10,
     padding: 14,
+  },
+  cardHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
   detail: {
     color: '#475569',
@@ -250,15 +318,49 @@ const styles = StyleSheet.create({
     marginTop: 10,
     padding: 10,
   },
+  iconButton: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 999,
+    padding: 8,
+  },
   listContent: {
     padding: 14,
     paddingBottom: 24,
   },
   name: {
     color: '#0f172a',
+    flex: 1,
     fontSize: 16,
     fontWeight: '800',
-    marginBottom: 6,
+    paddingRight: 6,
+  },
+  statusBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  statusBadgeCompleted: {
+    backgroundColor: '#dcfce7',
+    borderColor: '#86efac',
+  },
+  statusBadgePending: {
+    backgroundColor: '#fef9c3',
+    borderColor: '#fde68a',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  statusTextCompleted: {
+    color: '#166534',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statusTextPending: {
+    color: '#854d0e',
+    fontSize: 12,
+    fontWeight: '700',
   },
   screen: {
     backgroundColor: '#f8fafc',

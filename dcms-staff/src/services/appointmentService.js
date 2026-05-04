@@ -78,6 +78,7 @@ const normalizeAppointment = (item) => {
     serviceId: data.serviceId || primaryService?.serviceId || '',
     serviceName: data.serviceName || primaryService?.name || '',
     price: Number(data.price ?? data.fee ?? resolvedTotal) || resolvedTotal,
+    progressNote: data.progressNote || '',
   }
 }
 
@@ -114,11 +115,7 @@ export const getAppointments = async () => {
   const snapshot = await getDocs(appointmentsCollection)
   return snapshot.docs
     .map(normalizeAppointment)
-    .sort((a, b) => {
-      const aKey = `${a.date || ''} ${a.time || ''}`
-      const bKey = `${b.date || ''} ${b.time || ''}`
-      return aKey.localeCompare(bKey)
-    })
+    .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0))
 }
 
 export const addAppointment = createAppointment
@@ -146,7 +143,7 @@ export const updateAppointment = async (id, payload) => {
     : sumServicesTotal(services)
   const patientName = String(payload.patientName || '').trim()
 
-  await updateDoc(appointmentRef, {
+  const updateData = {
     patientId: payload.patientId,
     patientName,
     date: payload.date,
@@ -157,7 +154,13 @@ export const updateAppointment = async (id, payload) => {
     dentistId: (payload.dentistId || '').trim(),
     dentistName,
     dentist: dentistName,
-  })
+  }
+
+  if (typeof payload.progressNote === 'string') {
+    updateData.progressNote = payload.progressNote
+  }
+
+  await updateDoc(appointmentRef, updateData)
 }
 
 export const deleteAppointment = async (id) => {

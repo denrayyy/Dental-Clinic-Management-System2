@@ -108,7 +108,7 @@ const DentistTabs = () => {
 }
 
 const AppNavigator = () => {
-	const { isAuthenticated, isLoading, profile, requiresTermsAcceptance } = useAuth()
+	const { isAuthenticated, isLoading, profile } = useAuth()
 	const { navigationTheme } = useTheme()
 	const role = profile?.role || 'staff'
 
@@ -120,13 +120,7 @@ const AppNavigator = () => {
 		<NavigationContainer theme={navigationTheme}>
 			<Stack.Navigator screenOptions={{ headerShown: false }}>
 				{isAuthenticated ? (
-					requiresTermsAcceptance ? (
-						<Stack.Screen
-							name="TermsGate"
-							component={TermsScreen}
-							initialParams={{ docType: 'terms', requireAcceptance: true }}
-						/>
-					) : role === 'dentist' ? (
+					role === 'dentist' ? (
 						<Stack.Screen name="DentistTabs" component={DentistTabs} />
 					) : (
 						<Stack.Screen name="StaffTabs" component={StaffTabs} />
